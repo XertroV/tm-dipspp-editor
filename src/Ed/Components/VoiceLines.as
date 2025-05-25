@@ -1,0 +1,330 @@
+namespace CM_Editor {
+
+    // MARK: VoiceLines Cmpnt
+
+    const vec3 DEFAULT_MT_SIZE = vec3(10.6666667, 8, 10.6666667);
+    const vec3 DEFAULT_VL_POS = vec3(32, 8, 32) - vec3(10.6666667, 0, 10.6666667) * 0.5;
+
+    class VoiceLineEl {
+        string file;
+        string subtitles;
+        string imageAsset;
+        int subtitleParts = 0;
+        vec3 posBottomCenter = DEFAULT_VL_POS;
+        vec3 size = DEFAULT_MT_SIZE;
+
+        VoiceLineEl() {}
+        VoiceLineEl(const Json::Value@ j) {
+            file = j.Get("file", "");
+            subtitles = j.Get("subtitles", "");
+            imageAsset = j.Get("imageAsset", "");
+            posBottomCenter = JsonToVec3(j["pos"], DEFAULT_VL_POS);
+            size = JsonToVec3(j["size"], DEFAULT_MT_SIZE);
+            subtitleParts = subtitles.Split("\n").Length;
+        }
+
+        vec3 get_posMin() {
+            return posBottomCenter - size * vec3(0.5, 0, 0.5);
+        }
+
+        Json::Value ToJson() {
+            auto j = Json::Object();
+            j["file"] = file;
+            j["subtitles"] = subtitles;
+            j["imageAsset"] = imageAsset;
+            j["pos"] = Vec3ToJson(posBottomCenter);
+            j["size"] = Vec3ToJson(size);
+            return j;
+        }
+
+        string PosStr() {
+            return "< " + posBottomCenter.x + ", " + posBottomCenter.y + ", " + posBottomCenter.z + " >";
+        }
+
+        void DrawEditor(ProjectVoiceLinesComponent@ cmp, ProjectTab@ pTab) {
+            bool changedFile = false, changedSubtitles = false;
+            string fullUrl = pTab.GetUrlPrefix() + file;
+
+            file = UI::InputText("File", file, changedFile);
+            UI::SameLine();
+            if (UI::Button(Icons::Download + " Test")) {
+                OpenBrowserURL(fullUrl);
+            }
+            AddSimpleTooltip("Full URL: " + fullUrl);
+
+            if (file.EndsWith(".mp3") && file.Length > 4) {
+                UI::Text(BoolIcon(true) + " file name looks good.");
+            } else {
+                UI::Text(BoolIcon(false) + " file name should be an .mp3 file. (It is appended to UrlPrefix)");
+            }
+
+            UI::Separator();
+
+            UI::Text("Subtitles:");
+            subtitles = UI::InputTextMultiline("##subtitles", subtitles, changedSubtitles);
+            DrawSameLineSubtitlesHelper();
+            UI::Text("Subtitle Parts: " + subtitleParts);
+
+            if (subtitles.Length > 0) {
+                if (!subtitles.StartsWith("0:")) UI::Text(BoolIcon(false) + " Subtitles should start at t = 0. (First line should start with \"0:\")");
+            }
+
+            imageAsset = pTab.AssetBrowser("Speaker Image", imageAsset, AssetTy::Image, true);
+            // imageAsset = UI::InputText("Speaker Image", imageAsset);
+            // auto assetsComp = pTab.GetAssetsComponent();
+            // UI::AlignTextToFramePadding();
+            // if (assetsComp.HasImageAsset(imageAsset)) {
+            //     UI::Text(BoolIcon(true) + " Image asset found.");
+            // } else if (imageAsset.Length > 0) {
+            //     UI::Text(BoolIcon(false) + " Image asset not found.");
+            //     UI::SameLine();
+            //     if (UI::Button(Icons::Plus + " Add Image Asset")) {
+            //         assetsComp.AddImageAsset(imageAsset);
+            //         assetsComp.SaveToFile();
+            //     }
+            // }
+
+            UI::Separator();
+
+            if (cmp.IAmAwaitingMouseClick) {
+                posBottomCenter = GetEditorItemCursorPos() - vec3(0, 0.5, 0);
+                UI::BeginDisabled();
+                UI::InputFloat3("Position##pos", posBottomCenter, "%.3f", UI::InputTextFlags::ReadOnly);
+                UI::EndDisabled();
+                cmp.DrawInstructionText("Place Car at Trigger Location", false);
+            } else {
+                posBottomCenter = UI::InputFloat3("Position##pos", posBottomCenter);
+            }
+            UI::SameLine();
+            if (UI::Button(Icons::PencilSquareO + " Set")) OnClickSetPos(cmp);
+
+            size = UI::InputFloat3("Size##size", size);
+
+            if (UI::Button(Icons::Eye + " Show")) {
+                SetEditorCameraToPos(posBottomCenter);
+            }
+
+            UI::Separator();
+            UI::Text("Hints:");
+            UI::TextWrapped("- Make sure the bottom of the trigger is on the ground (or slightly below it).");
+            UI::TextWrapped("- The mediatracker trigger size is 10.667 x 8 x 10.667");
+        }
+
+        void OnClickSetPos(ProjectVoiceLinesComponent@ cmp) {
+            startnew(SetEditorToTestMode);
+            cmp.OnSelfAwaitingMouseClick();
+        }
+
+        void DrawSameLineSubtitlesHelper() {
+            UI::SameLine();
+            UI::AlignTextToFramePadding();
+            UI::Text(Icons::InfoCircle);
+            bool circleClicked = UI::IsItemClicked(UI::MouseButton::Left);
+            AddSimpleTooltip(SUBTITLES_HELP);
+            if (circleClicked) OpenBrowserURL("https://github.com/XertroV/tm-dips-plus-plus/blob/0d481094ef9fabb2095f93f853d841604ffaf35f/remote_assets/secret/subs-3948765.txt");
+        }
+    }
+
+    const string SUBTITLES_HELP = "# Subtitles Help\n\n"
+        "Line format: `<startTime_ms>: <text>`\n"
+        "Example: `500: Before you continue,`\n"
+        "- Starts at 0.5 seconds\n"
+        "- Text shown: \"Before you continue,\"\n\n"
+        + Icons::ExclamationCircle + " Also: put an empty subtitle line at the end to better control fade out timing.\n\n"
+        "Click to open an example subtitles file in the browser.\n";
+
+    class ProjectVoiceLinesComponent : ProjectComponent {
+        ProjectVoiceLinesComponent(const string &in jsonPath, ProjectMeta@ meta) {
+            super(jsonPath, meta);
+            name = "Voice Lines";
+            icon = Icons::CommentO;
+            type = EProjectComponent::VoiceLines;
+            thisTabClickRequiresTestPlaceMode = true;
+        }
+
+        // proxy methods for data access (px = proxy)
+        uint get_nbLines() const { return ro_data.HasKey("lines") ? ro_data["lines"].Length : 0; }
+        VoiceLineEl getLine(uint i) const { return VoiceLineEl(ro_data["lines"][i]); }
+        void setLine(uint i, VoiceLineEl@ vl) { rw_lines[i] = vl.ToJson(); }
+        // string get_UrlPrefix() const { return ro_data.Get("urlPrefix", ""); }
+        // void set_UrlPrefix(const string &in v) { rw_data["urlPrefix"] = v; }
+
+        Json::Value@ get_rw_lines() {
+            if (!ro_data.HasKey("lines") || ro_data["lines"].GetType() != Json::Type::Array) {
+                rw_data["lines"] = Json::Array();
+            }
+            return rw_data["lines"];
+        }
+
+        int PushVoiceLine(VoiceLineEl@ vl) {
+            auto @lines = rw_lines;
+            lines.Add(vl.ToJson());
+            return lines.Length - 1;
+        }
+
+        void CreateDefaultJsonObject() override {
+            auto j = Json::Object();
+            j["lines"] = Json::Array();
+            j["urlPrefix"] = "";
+            rw_data = j;
+        }
+
+        void DrawComponentInner(ProjectTab@ pTab) override {
+            if (editingVL >= int(nbLines)) {
+                NotifyWarning("Invalid voice line index: " + editingVL);
+                editingVL = -1;
+            }
+            DrawSelectedVLBox();
+            // if not editing, show header
+            if (editingVL == -1) {
+                DrawHeader();
+                // if still not editing, draw VLs
+                if (editingVL == -1) {
+                    UI::Separator();
+                    DrawVoiceLines(pTab.GetUrlPrefix());
+                }
+            } else {
+                // only draw editing if it was not set this frame to avoid flicker
+                DrawEditVoiceLine(pTab);
+            }
+        }
+
+        void DrawSelectedVLBox() {
+            if (editingVL != -1) @vlToDraw = getLine(editingVL);
+            if (vlToDraw is null) return;
+            nvgDrawWorldBox(vlToDraw.posMin, vlToDraw.size, cOrange);
+        }
+
+        int editingVL = -1;
+        VoiceLineEl@ vlToDraw = null;
+
+        void DrawHeader() {
+            if (UI::Button(Icons::Plus + " Add Voice Line")) {
+                OnCreateNewVoiceLine();
+            }
+            // bool urlPrefixChanged = false;
+            // string urlPrefix = UI::InputText("URL Prefix", UrlPrefix, urlPrefixChanged);
+            // if (urlPrefixChanged) {
+            //     UrlPrefix = urlPrefix;
+            // }
+        }
+
+        void DrawEditVoiceLine(ProjectTab@ pTab) {
+            bool clickedEnd = false;
+            UI::PushID("vlEdit" + editingVL);
+            auto vl = getLine(editingVL);
+
+            UI::AlignTextToFramePadding();
+            UI::Text("Editing VL: " + editingVL);
+
+            UI::SameLine();
+            auto pos1 = UI::GetCursorPos();
+            if (UI::Button(Icons::FloppyO + " Save")) {
+                clickedEnd = true;
+            }
+
+            UI::SameLine();
+            auto saveWidth = UI::GetCursorPos().x - pos1.x;
+
+            auto avail = UI::GetContentRegionAvail();
+            UI::Dummy(vec2(Math::Max(0.0, avail.x - saveWidth - 12 * g_scale), 0));
+            UI::SameLine();
+            // UI::BeginDisabled(!UI::IsKeyDown(UI::Key::LeftShift));
+            if (UI::Button(Icons::TrashO + " Delete")) {
+                startnew(CoroutineFuncUserdataInt64(OnDeleteVoiceLine), editingVL);
+            }
+            // UI::EndDisabled();
+
+            UI::Separator();
+
+            vl.DrawEditor(this, pTab);
+            setLine(editingVL, vl);
+
+            UI::PopID();
+
+            if (clickedEnd) {
+                editingVL = -1;
+            }
+        }
+
+        void OnDeleteVoiceLine(int64 i) {
+            if (i >= int64(nbLines)) return;
+            auto @lines = rw_lines;
+            lines.Remove(i);
+            editingVL = -1;
+            SaveToFile();
+        }
+
+        void OnCreateNewVoiceLine() {
+            auto vl = VoiceLineEl();
+            editingVL = PushVoiceLine(vl);
+            OnSetVoiceLineToDraw(vl, false);
+        }
+
+        void DrawVoiceLines(const string &in urlPrefix) {
+            UI::Text("# Voice Lines: " + nbLines);
+            UI::Separator();
+            UI::BeginChild("vl");
+
+            UI::BeginTable("Voice Lines", 4, UI::TableFlags::SizingStretchProp);
+            UI::TableSetupColumn("File", UI::TableColumnFlags::WidthStretch);
+            UI::TableSetupColumn("Has Subtitles", UI::TableColumnFlags::WidthStretch);
+            UI::TableSetupColumn("Position", UI::TableColumnFlags::WidthStretch);
+            UI::TableSetupColumn("Actions", UI::TableColumnFlags::WidthFixed);
+            UI::TableHeadersRow();
+
+            for (uint i = 0; i < nbLines; i++) {
+                UI::PushID("vl" + i);
+                auto vl = getLine(i);
+                string fullUrl = urlPrefix + vl.file;
+                UI::TableNextRow();
+                UI::TableNextColumn();
+                UI::AlignTextToFramePadding();
+                UI::Text(vl.file.Length > 0 ? vl.file : "\\$i\\$aaaNo file name");
+                UI::SameLine();
+                if (UI::Button(Icons::Download + " Test URL")) {
+                    OpenBrowserURL(fullUrl);
+                }
+                AddSimpleTooltip(fullUrl);
+
+                UI::TableNextColumn();
+                UI::Text(BoolIcon(vl.subtitles.Length > 0) + " / parts: " + vl.subtitleParts);
+                AddSimpleTooltip("Subtitles:\n" + vl.subtitles);
+
+                UI::TableNextColumn();
+                UI::Text(vl.PosStr());
+                UI::SameLine();
+                if (UI::Button(Icons::Crosshairs + " Show")) {
+                    OnSetVoiceLineToDraw(vl);
+                }
+
+                UI::TableNextColumn();
+                if (UI::Button(Icons::Pencil + " Edit")) {
+                    editingVL = i;
+                    OnSetVoiceLineToDraw(vl);
+                }
+                UI::PopID();
+            }
+
+            UI::EndTable();
+            UI::EndChild();
+        }
+
+
+        void OnSetVoiceLineToDraw(VoiceLineEl@ vl, bool focusCamera = true) {
+            @vlToDraw = vl;
+            if (focusCamera) {
+                SetEditorCameraToPos(vl.posBottomCenter, vl.size.Length() * 4.0);
+            }
+        }
+
+        void OnMouseClick(int x, int y, int button) override {
+            if (!EditorIsInTestPlaceMode()) {
+                // doing something else like moving camera. requeue intercept
+                startnew(CoroutineFunc(OnSelfAwaitingMouseClick));
+                return;
+            }
+        }
+    }
+
+}

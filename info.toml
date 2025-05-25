@@ -1,0 +1,11 @@
+[meta]
+name     = "Dips++ Editor"
+author   = "XertroV"
+category = "Deep Dip 2"
+version  = "0.5.5"
+siteid   = 725
+
+[script]
+#__DEFINES__
+dependencies = ["Camera"]
+optional_dependencies = ["dips-plus-plus", "dips++-dev"]
