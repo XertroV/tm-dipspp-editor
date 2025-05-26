@@ -548,10 +548,10 @@ namespace CM_Editor {
         }
 
         void DrawEditingMinigameUI(ProjectTab@ pTab) {
+            this.OnDirty();
             UI::PushID(tostring(editingIx));
             auto minigame = minigames[editingIx];
             UI::Text("Editing Minigame: " + minigame.name);
-            // Allow editing the minigame name
             minigame.name = UI::InputText("Name", minigame.name);
             if (UI::Button("Done")) {
                 editingIx = -1; // Exit editing mode
@@ -571,10 +571,12 @@ namespace CM_Editor {
                 UI::Text("Minigame " + (i + 1) + ": " + minigames[i].name);
                 if (UI::Button("Edit##" + i)) {
                     editingIx = int(i); // Enter editing mode
+                    this.OnDirty();
                 }
                 if (UI::Button("Remove##" + i)) {
                     minigames.RemoveAt(i);
                     i--;
+                    this.OnDirty();
                 }
                 UI::Separator();
                 UI::PopID();
