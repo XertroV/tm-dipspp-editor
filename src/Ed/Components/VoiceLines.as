@@ -30,7 +30,9 @@ namespace CM_Editor {
         }
         string PosStr() const { return trigger.PosStr(); }
         void DrawEditor(ProjectVoiceLinesComponent@ cmp, ProjectTab@ pTab) {
-            bool changedFile = false, changedSubtitles = false;
+            bool changedSubtitles = false;
+            string oldFile = file;
+            string oldImageAsset = imageAsset;
             string fullUrl = pTab.GetUrlPrefix() + file;
 
             file = pTab.AssetBrowser("Audio File", file, AssetTy::Audio);
@@ -59,19 +61,6 @@ namespace CM_Editor {
             }
 
             imageAsset = pTab.AssetBrowser("Speaker Image", imageAsset, AssetTy::Image);
-            // imageAsset = UI::InputText("Speaker Image", imageAsset);
-            // auto assetsComp = pTab.GetAssetsComponent();
-            // UI::AlignTextToFramePadding();
-            // if (assetsComp.HasImageAsset(imageAsset)) {
-            //     UI::Text(BoolIcon(true) + " Image asset found.");
-            // } else if (imageAsset.Length > 0) {
-            //     UI::Text(BoolIcon(false) + " Image asset not found.");
-            //     UI::SameLine();
-            //     if (UI::Button(Icons::Plus + " Add Image Asset")) {
-            //         assetsComp.AddImageAsset(imageAsset);
-            //         assetsComp.SaveToFile();
-            //     }
-            // }
 
             UI::Separator();
 
@@ -81,6 +70,11 @@ namespace CM_Editor {
             UI::Text("Hints:");
             UI::TextWrapped("- Make sure the bottom of the trigger is on the ground (or slightly below it).");
             UI::TextWrapped("- The mediatracker trigger size is 10.667 x 8 x 10.667");
+
+            // Call OnDirty if any field changed
+            if ((file != oldFile) || changedSubtitles || (imageAsset != oldImageAsset)) {
+                if (cmp !is null) cmp.OnDirty();
+            }
         }
 
         void OnClickSetPos(ProjectVoiceLinesComponent@ cmp) {

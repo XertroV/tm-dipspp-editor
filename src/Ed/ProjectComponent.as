@@ -9,7 +9,7 @@ namespace CM_Editor {
         Assets,
         Collectables,
         Minigames,
-        _LAST,
+        _LAST, // this is used to mark the end of entries we loop through for the checklist
         MapInfo,
     }
 

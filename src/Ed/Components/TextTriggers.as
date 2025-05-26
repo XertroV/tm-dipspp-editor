@@ -17,8 +17,10 @@ namespace CM_Editor {
             return j;
         }
         void DrawEditor(TextTriggersComponent@ cmp) {
+            string oldName = trigger.name;
             trigger.name = UI::InputText("Text   \\$888Delimiter: |", trigger.name);
             AddSimpleTooltip("Use '|' to separate different options for the text. One will be chosen at random.");
+            if (trigger.name != oldName && cmp !is null) cmp.OnDirty();
             trigger.DrawEditorUI();
         }
         void DrawNvgBox() {
@@ -45,7 +47,7 @@ namespace CM_Editor {
 
         uint get_nbTriggers() const { return m_triggers.Length; }
         TextTrigger@ getTrigger(uint i) const { return m_triggers[i]; }
-        void setTrigger(uint i, TextTrigger@ t) { @m_triggers[i] = t; }
+        void setTrigger(uint i, TextTrigger@ t) { @m_triggers[i] = t; OnDirty(); }
 
         void TryLoadingJson(const string&in jFName) override {
             ProjectComponent::TryLoadingJson(jFName);
@@ -77,6 +79,7 @@ namespace CM_Editor {
 
         int PushTrigger(TextTrigger@ t) {
             m_triggers.InsertLast(t);
+            OnDirty();
             return int(m_triggers.Length - 1);
         }
 
@@ -125,6 +128,7 @@ namespace CM_Editor {
             UI::Separator();
             t.DrawEditor(this);
             setTrigger(editingIx, t);
+            OnDirty(); // Mark dirty after editing
             UI::PopID();
             if (clickedEnd) {
                 editingIx = -1;
@@ -181,6 +185,7 @@ namespace CM_Editor {
             if (i >= int64(nbTriggers)) return;
             m_triggers.RemoveAt(i);
             editingIx = -1;
+            OnDirty();
             SaveToFile();
         }
 
@@ -188,6 +193,7 @@ namespace CM_Editor {
             auto t = TextTrigger();
             editingIx = PushTrigger(t);
             OnSetTriggerToDraw(t, false);
+            OnDirty();
         }
 
         void OnMouseClick(int x, int y, int button) override {
