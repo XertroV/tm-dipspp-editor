@@ -218,6 +218,7 @@ namespace CM_Editor {
             if (type == MinigameType::TimeTrial) @params = TimeTrialMinigameParams(paramsJson);
             else @params = MinigameParams(paramsJson);
         }
+
         Minigame(const string &in _name, MinigameType _type) {
             name = _name;
             type = _type;
@@ -339,10 +340,11 @@ namespace CM_Editor {
                 rw_data = Json::Object(); // reset if not an object
             }
             if (ro_data.HasKey("games") && ro_data["games"].GetType() == Json::Type::Array) {
-                auto arr = ro_data["games"];
+                auto arr = rw_data["games"];
                 for (uint i = 0; i < arr.Length; i++) {
-                    auto gameJson = arr[i];
+                    Json::Value@ gameJson = arr[i];
                     MinigameType type = MinigameType(int(gameJson.Get("type", 0)));
+                    print("Loading Minigame Type: " + tostring(type));
                     Minigame@ minigame;
                     if (type == MinigameType::TimeTrial) {
                         @minigame = TimeTrialMinigame(gameJson);
@@ -352,6 +354,7 @@ namespace CM_Editor {
                         @minigame = MaxAvgSpeedMinigame(gameJson);
                     } else {
                         // Handle other types or unknown
+                        warn("Unknown MinigameType: " + tostring(type));
                         continue;
                     }
                     minigames.InsertLast(minigame);
