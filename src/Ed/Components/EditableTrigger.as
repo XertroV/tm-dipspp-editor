@@ -12,20 +12,24 @@ namespace CM_Editor {
         vec3 size;
         bool isEditing = false;
         string label;
+        string name;
         EditableTriggerCallback@ onEditDone;
 
-        EditableTrigger(const vec3 &in pos = DEFAULT_VL_POS, const vec3 &in size_ = DEFAULT_MT_SIZE, const string &in label_ = "Trigger") {
+        EditableTrigger(const vec3 &in pos = DEFAULT_VL_POS, const vec3 &in size_ = DEFAULT_MT_SIZE, const string &in label_ = "Trigger", const string &in name_ = "") {
             posBottomCenter = pos;
             size = size_;
             label = label_;
+            name = name_;
         }
         EditableTrigger(const Json::Value@ j, const vec3 &in defaultPos = DEFAULT_VL_POS, const vec3 &in defaultSize = DEFAULT_MT_SIZE, const string &in label_ = "Trigger") {
             if (j is null) {
                 posBottomCenter = defaultPos;
                 size = defaultSize;
+                name = "";
             } else {
                 posBottomCenter = JsonToVec3(j.Get("pos", Json::Value()), defaultPos);
                 size = JsonToVec3(j.Get("size", Json::Value()), defaultSize);
+                name = j.Get("name", "");
             }
             label = label_;
         }
@@ -33,6 +37,7 @@ namespace CM_Editor {
             auto j = Json::Object();
             j["pos"] = Vec3ToJson(posBottomCenter);
             j["size"] = Vec3ToJson(size);
+            j["name"] = name;
             return j;
         }
         vec3 get_posMin() const {

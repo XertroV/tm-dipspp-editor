@@ -2,7 +2,65 @@ namespace CM_Editor {
 
     // MARK: Floors Cmpnt
 
+    // --- FloorEl and FloorsCollection ---
+    class FloorEl {
+        string name;
+        float height;
+        FloorEl() {}
+        FloorEl(const Json::Value@ j) {
+            name = j.Get("name", "");
+            height = float(j.Get("height", 0.0));
+        }
+        Json::Value@ ToJson() const {
+            auto j = Json::Object();
+            j["name"] = name;
+            j["height"] = height;
+            return j;
+        }
+    }
+
+    class FloorsCollection {
+        array<FloorEl@> floors;
+        FloorsCollection() {}
+        FloorsCollection(const Json::Value@ j) { LoadFromJson(j); }
+        void LoadFromJson(const Json::Value@ j) {
+            floors.RemoveRange(0, floors.Length);
+            if (j.GetType() == Json::Type::Array) {
+                for (uint i = 0; i < j.Length; i++) {
+                    floors.InsertLast(FloorEl(j[i]));
+                }
+            } else if (j.GetType() == Json::Type::Object) {
+                floors.InsertLast(FloorEl(j));
+            }
+        }
+        Json::Value@ ToJson() const {
+            auto arr = Json::Array();
+            for (uint i = 0; i < floors.Length; i++) {
+                arr.Add(floors[i].ToJson());
+            }
+            return arr;
+        }
+        uint Length() const { return floors.Length; }
+        FloorEl@ At(uint i) const { return floors[i]; }
+        void Set(uint i, FloorEl@ f) { @floors[i] = f; }
+        void Add(FloorEl@ f) { floors.InsertLast(f); }
+        void RemoveAt(uint i) { floors.RemoveAt(i); }
+        void Clear() { floors.RemoveRange(0, floors.Length); }
+        void Sort() {
+            for (uint i = 0; i + 1 < floors.Length; i++) {
+                for (uint j = 0; j + 1 < floors.Length - i; j++) {
+                    if (floors[j].height > floors[j+1].height) {
+                        auto tmp = floors[j];
+                        @floors[j] = floors[j+1];
+                        @floors[j+1] = tmp;
+                    }
+                }
+            }
+        }
+    }
+
     class ProjectFloorsComponent : ProjectComponent {
+        FloorsCollection m_floors;
         ProjectFloorsComponent(const string &in jsonPath, ProjectMeta@ meta) {
             super(jsonPath, meta);
             name = "Floors";
@@ -15,47 +73,26 @@ namespace CM_Editor {
         // proxy methods for data access (px = proxy)
         bool get_px_lastFloorEnd() const { return ro_data.Get("lastFloorEnd", false); }
         void set_px_lastFloorEnd(bool v) { rw_data["lastFloorEnd"] = v; }
-        uint get_nbFloors() const { return ro_data.HasKey("floors") ? ro_data["floors"].Length : 0; }
-        Json::Value getFloor(uint i) const { return ro_data["floors"][i]; }
-        Json::Value@ getRwFloor(uint i) { return rw_data["floors"][i]; }
-        void pushFloor(Json::Value@ floor) { rw_data["floors"].Add(floor); }
-        void setFloor(uint i, Json::Value@ floor) { rw_data["floors"][i] = floor; }
-        void removeFloor(uint i) {
-            if (i >= nbFloors) return;
-            rw_data["floors"].Remove(i);
-        }
+        uint get_nbFloors() const { return m_floors.Length(); }
+        FloorEl@ getFloor(uint i) const { return m_floors.At(i); }
+        void setFloor(uint i, FloorEl@ f) { m_floors.Set(i, f); }
+        void pushFloor(FloorEl@ f) { m_floors.Add(f); }
+        void removeFloor(uint i) { m_floors.RemoveAt(i); }
+        void sortFloors() { m_floors.Sort(); }
 
-        void sortFloors() {
-            // simple sorting; should not be too inefficient if we keep floors in sorted order
-            auto @floors = rw_data["floors"];
-            if (floors.Length == 0) return;
-            // subtract 1 for the last floor
-            int nb = nbFloors - 1;
-            for (int i = 0; i < nb; i++) {
-                if (float(floors[i]["height"]) > float(floors[i + 1]["height"])) {
-                    SwapFloors(i, i + 1);
-                    i = -1; // restart
-                }
+        void TryLoadingJson(const string&in jFName) override {
+            ProjectComponent::TryLoadingJson(jFName);
+            m_floors.Clear();
+            if (ro_data.HasKey("floors")) {
+                m_floors.LoadFromJson(ro_data["floors"]);
             }
-        }
-
-        void SwapFloors(uint i, uint j) {
-            auto @floors = rw_data["floors"];
-            if ((i > j ? i : j) >= nbFloors) return;
-            string tName = floors[i]["name"];
-            float tHeight = floors[i]["height"];
-            floors[i]["name"] = floors[j]["name"];
-            floors[i]["height"] = floors[j]["height"];
-            floors[j]["name"] = tName;
-            floors[j]["height"] = tHeight;
         }
 
         void CreateJsonDataFromComment(DipsSpec@ spec) override {
             CreateDefaultJsonObject();
             px_lastFloorEnd = spec.lastFloorEnd;
-            auto nbFloors = spec.floors.Length;
-            for (uint i = 0; i < nbFloors; i++) {
-                rw_data["floors"].Add(spec.floors[i].ToJson());
+            for (uint i = 0; i < spec.floors.Length; i++) {
+                m_floors.Add(FloorEl(spec.floors[i].ToJson()));
             }
         }
 
@@ -64,6 +101,12 @@ namespace CM_Editor {
             j["floors"] = Json::Array();
             j["lastFloorEnd"] = false;
             rw_data = j;
+            m_floors.Clear();
+        }
+
+        void SaveToFile() override {
+            rw_data["floors"] = m_floors.ToJson();
+            ProjectComponent::SaveToFile();
         }
 
         void DrawComponentInner(ProjectTab@ pTab) override {
@@ -119,15 +162,15 @@ namespace CM_Editor {
                 UI::PushID("flr" + i);
                 UI::TableNextRow();
                 auto floor = getFloor(i);
-                float height = floor["height"];
-                string name = floor["name"];
+                float height = floor.height;
+                string name = floor.name;
                 if (name.Length == 0 && !editing) name = "\\$i\\$aaaFloor " + i;
 
                 UI::TableNextColumn();
+                bool iNamePressedEnter = false;
                 if (editing) {
-                    name = UI::InputText("##name" + i, name);
-                    floor["name"] = name;
-                    // if (name.Length == 0) name = "\\$i\\$aaaFloor " + i;
+                    name = UI::InputText("##name" + i, name, iNamePressedEnter, UI::InputTextFlags::EnterReturnsTrue);
+                    floor.name = name;
                 } else {
                     UI::AlignTextToFramePadding();
                     UI::Text(name);
@@ -136,20 +179,19 @@ namespace CM_Editor {
                 UI::TableNextColumn();
                 if (editing) {
                     height = UI::InputFloat("##height" + i, height);
-                    floor["height"] = height;
+                    floor.height = height;
                 } else {
                     UI::Text(tostring(height));
                 }
 
                 UI::TableNextColumn();
                 if (editing) {
-                    if (UI::Button(Icons::Check + " Done")) {
+                    if (UI::Button(Icons::Check + " Done") || iNamePressedEnter) {
                         editIx = -1;
                     }
                 } else {
                     if (UI::Button(Icons::Pencil + " Edit")) {
                         editIx = i;
-                        // UI::SetKeyboardFocusHere(-1); // -2 = assert fail
                     }
                     UI::SameLine();
                     UI::BeginDisabled(!UI::IsKeyDown(UI::Key::LeftShift));
@@ -178,18 +220,17 @@ namespace CM_Editor {
             return creatingFloor !is null;
         }
 
-        Json::Value@ creatingFloor = null;
+        FloorEl@ creatingFloor = null;
         void OnCreateNewFloor() {
-            auto floor = Json::Object();
-            floor["height"] = 0.0;
-            floor["name"] = "";
-            @creatingFloor = floor;
+            @creatingFloor = FloorEl();
+            creatingFloor.height = 0.0;
+            creatingFloor.name = "";
             OnSelfAwaitingMouseClick();
             startnew(SetEditorToTestMode);
         }
 
         void SetCreatingFloorHeight(float height) {
-            creatingFloor["height"] = height;
+            creatingFloor.height = height;
             pushFloor(creatingFloor);
             sortFloors();
             @creatingFloor = null;
