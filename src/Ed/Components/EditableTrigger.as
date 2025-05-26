@@ -1,11 +1,9 @@
 namespace CM_Editor {
 
-    // MARK: VoiceLines Cmpnt
-
     const vec3 DEFAULT_MT_SIZE = vec3(10.6666667, 8, 10.6666667);
     const vec3 DEFAULT_VL_POS = vec3(32, 8, 32) - vec3(10.6666667, 0, 10.6666667) * 0.5;
 
-    // --- EditableTrigger class ---
+    // MARK EditableTrigger
     funcdef void EditableTriggerCallback(EditableTrigger@ trig);
     class EditableTrigger {
         vec3 posBottomCenter;

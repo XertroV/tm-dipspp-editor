@@ -480,25 +480,6 @@ namespace CM_Editor {
             assets.Draw();
         }
 
-        // void AddAssetsFromInput(AssetTy ty, const string &in input) {
-        //     auto @assets = getRwAssets(ty);
-        //     auto assetList = input.Split(",");
-        //     int nbAdded = 0;
-        //     for (uint i = 0; i < assetList.Length; i++) {
-        //         string asset = assetList[i].Trim();
-        //         if (asset.Length == 0) continue;
-        //         if (HasAsset(ty, asset)) {
-        //             NotifyWarning("Asset already exists: " + asset);
-        //             continue;
-        //         }
-        //         assets.Add(asset);
-        //         trace("Added asset: " + asset);
-        //         nbAdded++;
-        //     }
-        //     SaveToFile();
-        //     Notify("Added " + nbAdded + " assets.");
-        // }
-
         bool DidUrlCheckerPass(AssetTy ty) {
             auto urlChecker = GetUrlChecker(ty);
             if (urlChecker.isStale) return false;
