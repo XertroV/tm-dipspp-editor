@@ -192,7 +192,7 @@ namespace CM_Editor {
             auto vl = getLine(editingVL);
 
             // Keep trigger name updated to match asset name
-            vl.trigger.name = "VL_" + vl.file;
+            vl.trigger.name = vl.file;
 
             UI::AlignTextToFramePadding();
             UI::Text("Editing VL: " + editingVL);

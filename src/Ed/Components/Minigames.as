@@ -128,7 +128,7 @@ namespace CM_Editor {
             anyOrder = UI::Checkbox("Checkpoints Any Order", anyOrder);
             UI::Text("Checkpoints: " + checkpoints.Length);
             for (uint i = 0; i < checkpoints.Length; i++) {
-                UI::PushID(int(i));
+                UI::PushID(tostring(i));
                 checkpoints[i].DrawEditorUI();
                 if (UI::Button(Icons::Trash + " Remove##cp" + i)) {
                     checkpoints.RemoveAt(i);
@@ -332,28 +332,40 @@ namespace CM_Editor {
             type = EProjectComponent::Minigames;
         }
 
-        void LoadFromJson(Json::Value@ json) {
+        void TryLoadingJson(const string &in jFile) override {
+            ProjectComponent::TryLoadingJson(jFile);
             minigames.Resize(0);
-            for (uint i = 0; i < json.Length; i++) {
-                auto type = MinigameType(int(json[i].Get("type", 0)));
-                if (type == MinigameType::TimeTrial) {
-                    minigames.InsertLast(TimeTrialMinigame(json[i]));
-                } else if (type == MinigameType::JumpHigh) {
-                    minigames.InsertLast(JumpHighMinigame(json[i]));
-                } else if (type == MinigameType::MaxAvgSpeed) {
-                    minigames.InsertLast(MaxAvgSpeedMinigame(json[i]));
-                } else {
-                    minigames.InsertLast(Minigame(json[i]));
+            if (ro_data.GetType() != Json::Type::Object) {
+                rw_data = Json::Object(); // reset if not an object
+            }
+            if (ro_data.HasKey("games") && ro_data["games"].GetType() == Json::Type::Array) {
+                auto arr = ro_data["games"];
+                for (uint i = 0; i < arr.Length; i++) {
+                    auto gameJson = arr[i];
+                    MinigameType type = MinigameType(int(gameJson.Get("type", 0)));
+                    Minigame@ minigame;
+                    if (type == MinigameType::TimeTrial) {
+                        @minigame = TimeTrialMinigame(gameJson);
+                    } else if (type == MinigameType::JumpHigh) {
+                        @minigame = JumpHighMinigame(gameJson);
+                    } else if (type == MinigameType::MaxAvgSpeed) {
+                        @minigame = MaxAvgSpeedMinigame(gameJson);
+                    } else {
+                        // Handle other types or unknown
+                        continue;
+                    }
+                    minigames.InsertLast(minigame);
                 }
             }
         }
 
-        Json::Value@ ToJson() {
-            auto json = Json::Array();
+        void SaveToFile() override {
+            Json::Value@ arr = Json::Array();
             for (uint i = 0; i < minigames.Length; i++) {
-                json.Add(minigames[i].ToJson());
+                arr.Add(minigames[i].ToJson());
             }
-            return json;
+            rw_data["games"] = arr;
+            ProjectComponent::SaveToFile();
         }
 
         void DrawComponentInner(ProjectTab@ pTab) override {
@@ -377,15 +389,18 @@ namespace CM_Editor {
         }
 
         void DrawEditingMinigameUI() {
-            UI::PushID(editingIx);
-            UI::Text("Editing Minigame: " + minigames[editingIx].name);
+            UI::PushID(tostring(editingIx));
+            auto minigame = minigames[editingIx];
+            UI::Text("Editing Minigame: " + minigame.name);
+            // Allow editing the minigame name
+            minigame.name = UI::InputText("Name", minigame.name);
             if (UI::Button("Done")) {
                 editingIx = -1; // Exit editing mode
             }
             UI::Separator();
             if (editingIx >= 0) {
-                minigames[editingIx].DrawEditor();
-                minigames[editingIx].DrawNvgBoxes();
+                minigame.DrawEditor();
+                minigame.DrawNvgBoxes();
             }
             UI::PopID();
         }
@@ -393,7 +408,7 @@ namespace CM_Editor {
         void DrawMinigameListUI() {
             DrawAddMinigameButton();
             for (uint i = 0; i < minigames.Length; i++) {
-                UI::PushID(int(i));
+                UI::PushID(tostring(i));
                 UI::Text("Minigame " + (i + 1) + ": " + minigames[i].name);
                 if (UI::Button("Edit##" + i)) {
                     editingIx = int(i); // Enter editing mode
