@@ -67,7 +67,7 @@ void Dev_NotifyWarning(const string &in msg) {
 
 
 namespace UX {
-    shared void LayoutLeftRight(const string &in id, CoroutineFunc@ left, CoroutineFunc@ right) {
+    void LayoutLeftRight(const string &in id, CoroutineFunc@ left, CoroutineFunc@ right) {
         if (UI::BeginTable(id, 3, UI::TableFlags::SizingFixedFit)) {
             UI::TableSetupColumn("lhs", UI::TableColumnFlags::WidthFixed);
             UI::TableSetupColumn("mid", UI::TableColumnFlags::WidthStretch);
@@ -81,5 +81,9 @@ namespace UX {
             right();
             UI::EndTable();
         }
+    }
+
+    bool Toggler(const string &in id, bool state) {
+        return UI::Button((state ? Icons::ToggleOn : Icons::ToggleOff) + "##" + id);
     }
 }

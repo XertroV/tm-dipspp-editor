@@ -45,7 +45,8 @@ namespace CM_Editor {
             bool changedFile = false, changedSubtitles = false;
             string fullUrl = pTab.GetUrlPrefix() + file;
 
-            file = UI::InputText("File", file, changedFile);
+            file = pTab.AssetBrowser("Audio File", file, AssetTy::Audio);
+            // file = UI::InputText("File", file, changedFile);
             UI::SameLine();
             if (UI::Button(Icons::Download + " Test")) {
                 OpenBrowserURL(fullUrl);
@@ -61,7 +62,7 @@ namespace CM_Editor {
             UI::Separator();
 
             UI::Text("Subtitles:");
-            subtitles = UI::InputTextMultiline("##subtitles", subtitles, changedSubtitles);
+            subtitles = UI::InputTextMultiline("##subtitles", subtitles, changedSubtitles, vec2(300, 100));
             DrawSameLineSubtitlesHelper();
             UI::Text("Subtitle Parts: " + subtitleParts);
 
@@ -69,7 +70,7 @@ namespace CM_Editor {
                 if (!subtitles.StartsWith("0:")) UI::Text(BoolIcon(false) + " Subtitles should start at t = 0. (First line should start with \"0:\")");
             }
 
-            imageAsset = pTab.AssetBrowser("Speaker Image", imageAsset, AssetTy::Image, true);
+            imageAsset = pTab.AssetBrowser("Speaker Image", imageAsset, AssetTy::Image);
             // imageAsset = UI::InputText("Speaker Image", imageAsset);
             // auto assetsComp = pTab.GetAssetsComponent();
             // UI::AlignTextToFramePadding();
@@ -169,6 +170,11 @@ namespace CM_Editor {
             rw_data = j;
         }
 
+        void SaveToFile() override {
+            ProjectComponent::SaveToFile();
+            editingVL = -1;
+        }
+
         void DrawComponentInner(ProjectTab@ pTab) override {
             if (editingVL >= int(nbLines)) {
                 NotifyWarning("Invalid voice line index: " + editingVL);
@@ -202,11 +208,6 @@ namespace CM_Editor {
             if (UI::Button(Icons::Plus + " Add Voice Line")) {
                 OnCreateNewVoiceLine();
             }
-            // bool urlPrefixChanged = false;
-            // string urlPrefix = UI::InputText("URL Prefix", UrlPrefix, urlPrefixChanged);
-            // if (urlPrefixChanged) {
-            //     UrlPrefix = urlPrefix;
-            // }
         }
 
         void DrawEditVoiceLine(ProjectTab@ pTab) {
@@ -219,7 +220,7 @@ namespace CM_Editor {
 
             UI::SameLine();
             auto pos1 = UI::GetCursorPos();
-            if (UI::Button(Icons::FloppyO + " Save")) {
+            if (UI::Button(Icons::Check + " Done")) {
                 clickedEnd = true;
             }
 

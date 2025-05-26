@@ -4,13 +4,16 @@ namespace CM_Editor {
 
     enum AssetTy {
         Image,
-        Sound
+        Audio
     }
+
+    const string IMAGES_K = "images";
+    const string AUDIOS_K = "audios";
 
     string AssetTy_ToKey(AssetTy ty) {
         switch (ty) {
-            case AssetTy::Image: return "images";
-            case AssetTy::Sound: return "sounds";
+            case AssetTy::Image: return IMAGES_K;
+            case AssetTy::Audio: return AUDIOS_K;
         }
         throw("Invalid AssetTy: " + tostring(ty));
         return "";
@@ -24,18 +27,21 @@ namespace CM_Editor {
         markAssetsDirty();
     }
     CoroutineFunc@ markAssetsDirty = null;
+#if FALSE
+    void markAssetsDirty() {} // for language server
+#endif
 
     // holds individual files
     class AssetsList {
         string[] files;
         AssetsList() {}
-        AssetsList(Json::Value@ j) {
+        AssetsList(const Json::Value@ j) {
             LoadFromJson(j);
         }
 
-        void LoadFromJson(Json::Value@ j) {
+        void LoadFromJson(const Json::Value@ j) {
             if (j.GetType() != Json::Type::Array) {
-                warn("AssetsList: Expected array, got: " + j.GetType());
+                warn("AssetsList: Expected array, got: " + tostring(j.GetType()));
                 return;
             }
             files.RemoveRange(0, files.Length);
@@ -43,7 +49,7 @@ namespace CM_Editor {
                 if (j[i].GetType() == Json::Type::String) {
                     files.InsertLast(string(j[i]));
                 } else {
-                    warn("AssetsList: Invalid type at index " + i + ": " + j[i].GetType());
+                    warn("AssetsList: Invalid type at index " + i + ": " + tostring(j[i].GetType()));
                 }
             }
         }
@@ -103,12 +109,12 @@ namespace CM_Editor {
             this.name = name;
             @assets = AssetsList();
         }
-        AssetsCategory(Json::Value@ j) {
+        AssetsCategory(const Json::Value@ j) {
             LoadFromJson(j);
         }
-        void LoadFromJson(Json::Value@ j) {
+        void LoadFromJson(const Json::Value@ j) {
             if (j.GetType() != Json::Type::Object) {
-                warn("AssetsCategory: Expected object, got: " + j.GetType());
+                warn("AssetsCategory: Expected object, got: " + tostring(j.GetType()));
                 return;
             }
             name = j.Get("name", "Unnamed Category");
@@ -127,6 +133,7 @@ namespace CM_Editor {
                 return;
             }
             assets.files.InsertLast(asset);
+            MarkAssetsDirty();
         }
 
         void AddAssetsCSV(const string &in csv) {
@@ -164,6 +171,28 @@ namespace CM_Editor {
                 UI::TextWrapped("No assets in: " + this.name);
             }
         }
+
+        string DrawMenu(const string &in value) {
+            string ret = value;
+            if (UI::BeginMenu(name)) {
+                for (uint i = 0; i < assets.files.Length; i++) {
+                    auto asset = assets.files[i];
+                    if (UI::MenuItem(asset, "", value == asset)) {
+                        ret = asset;
+                    }
+                }
+                UI::Separator();
+                bool e;
+                m_newAsset = UI::InputText("New Asset", m_newAsset, e, UI::InputTextFlags::EnterReturnsTrue);
+                if ((UI::Button(Icons::Plus + " Add") || e) && m_newAsset.Length > 0) {
+                    AddAssetsCSV(m_newAsset);
+                    ret = m_newAsset;
+                    m_newAsset = "";
+                }
+                UI::EndMenu();
+            }
+            return ret;
+        }
     }
 
     // holds categories of assets, 1 collection per AssetTy
@@ -172,13 +201,13 @@ namespace CM_Editor {
 
         AssetsCollection() {}
 
-        AssetsCollection(Json::Value@ j) {
+        AssetsCollection(const Json::Value@ j) {
             LoadFromJson(j);
         }
 
-        void LoadFromJson(Json::Value@ j) {
-            if (j.GetType() != Json::Type::Object) {
-                warn("AssetsCollection: Expected object, got: " + j.GetType());
+        void LoadFromJson(const Json::Value@ j) {
+            if (j.GetType() != Json::Type::Array) {
+                warn("AssetsCollection: Expected array, got: " + tostring(j.GetType()));
                 return;
             }
             categories.RemoveRange(0, categories.Length);
@@ -212,6 +241,7 @@ namespace CM_Editor {
             }
             @cat = AssetsCategory(name);
             categories.InsertLast(cat);
+            MarkAssetsDirty();
             return cat;
         }
 
@@ -224,8 +254,8 @@ namespace CM_Editor {
             }
             // not found, create new category
             @cat = AssetsCategory(categoryName);
-            cat.AddAsset(asset);
             categories.InsertLast(cat);
+            cat.AddAsset(asset);
         }
 
         bool HasAsset(const string &in asset) {
@@ -255,6 +285,25 @@ namespace CM_Editor {
                 UI::TextWrapped("Add or select a category.");
             }
         }
+
+        string newCatName;
+        string DrawMenu(const string &in value) {
+            string ret = value;
+            for (uint i = 0; i < categories.Length; i++) {
+                auto cat = categories[i];
+                ret = cat.DrawMenu(ret);
+            }
+            if (UI::BeginMenu("Add New Category")) {
+                bool e = false;
+                newCatName = UI::InputText("##newCat", newCatName, e, UI::InputTextFlags::EnterReturnsTrue);
+                if ((UI::Button(Icons::Plus + " Add") || e) && newCatName.Length > 0) {
+                    NewCategory(newCatName);
+                    newCatName = "";
+                }
+                UI::EndMenu();
+            }
+            return ret;
+        }
     }
 
     class ProjectAssetsComponent : ProjectComponent {
@@ -262,7 +311,7 @@ namespace CM_Editor {
         UrlChecks@ soundUrlChecks = UrlChecks();
 
         AssetsCollection@ images;
-        AssetsCollection@ sounds;
+        AssetsCollection@ audios;
 
         ProjectAssetsComponent(const string &in jsonPath, ProjectMeta@ meta) {
             super(jsonPath, meta);
@@ -270,12 +319,22 @@ namespace CM_Editor {
             icon = Icons::FileImageO;
             type = EProjectComponent::Assets;
             @images = AssetsCollection();
-            @sounds = AssetsCollection();
+            @audios = AssetsCollection();
+        }
+
+        void TryLoadingJson(const string&in jFName) override {
+            ProjectComponent::TryLoadingJson(jFName);
+            if (ro_data.HasKey(IMAGES_K)) {
+                @images = AssetsCollection(ro_data[IMAGES_K]);
+            }
+            if (ro_data.HasKey(AUDIOS_K)) {
+                @audios = AssetsCollection(ro_data[AUDIOS_K]);
+            }
         }
 
         void SaveToFile() override {
-            rw_data["images"] = images.ToJson();
-            rw_data["sounds"] = sounds.ToJson();
+            rw_data[IMAGES_K] = images.ToJson();
+            rw_data[AUDIOS_K] = audios.ToJson();
             ProjectComponent::SaveToFile();
         }
 
@@ -308,7 +367,7 @@ namespace CM_Editor {
         AssetsCollection@ GetAssets(AssetTy ty) {
             switch (ty) {
                 case AssetTy::Image: return images;
-                case AssetTy::Sound: return sounds;
+                case AssetTy::Audio: return audios;
             }
             throw("Invalid AssetTy: " + tostring(ty));
             return null;
@@ -323,19 +382,19 @@ namespace CM_Editor {
 
         void CreateDefaultJsonObject() override {
             auto j = Json::Object();
-            j["images"] = Json::Array();
-            j["sounds"] = Json::Array();
+            j[IMAGES_K] = Json::Array();
+            j[AUDIOS_K] = Json::Array();
             rw_data = j;
         }
 
         void DrawComponentInner(ProjectTab@ pTab) override {
             UI::BeginTabBar("Assets", UI::TabBarFlags::None);
-            if (UI::BeginTabItem("Images")) {
+            if (UI::BeginTabItem(IMAGES_K)) {
                 DrawAssetTab(AssetTy::Image, pTab);
                 UI::EndTabItem();
             }
             if (UI::BeginTabItem("Audio")) {
-                DrawAssetTab(AssetTy::Sound, pTab);
+                DrawAssetTab(AssetTy::Audio, pTab);
                 UI::EndTabItem();
             }
             UI::EndTabBar();
@@ -360,7 +419,7 @@ namespace CM_Editor {
         UrlChecks@ GetUrlChecker(AssetTy ty) {
             switch (ty) {
                 case AssetTy::Image: return imageUrlChecks;
-                case AssetTy::Sound: return soundUrlChecks;
+                case AssetTy::Audio: return soundUrlChecks;
             }
             throw("Invalid AssetTy: " + tostring(ty));
             return null;
@@ -508,42 +567,51 @@ namespace CM_Editor {
 
 
         string m_BrowserInput = "";
+        int browserOpenTy = -1;
 
         /* Browse assets by type.
            Modes: new or find. New can add a new asset, and find will show existing assets via an autocomplete dropdown.
 
         */
-        string Browser(const string &in label, const string &in value, AssetTy ty, bool allowAdd = true) {
-            auto assets = getRoAssets(ty);
+        string Browser(const string &in label, const string &in value, AssetTy ty) {
+            auto assets = GetAssets(ty);
             UI::AlignTextToFramePadding();
-            UI::Text(label);
-            UI::SameLine();
-            Draw_AssetBrowserModeButton();
-            UI::SameLine();
-            bool changed;
             string outV = value;
-            if (assetBrowseModeAddNew) {
-                outV = UI::InputText("##" + label + "New", value, changed, UI::InputTextFlags::EnterReturnsTrue);
-            } else {
-                // draw dropdown
+            UI::AlignTextToFramePadding();
+            UI::BeginChild("##" + label, vec2(120, UI::GetFrameHeight()));
+            UI::AlignTextToFramePadding();
+            if (browserOpenTy == ty) {
+                if (UI::BeginMenu(label)) {
+                    outV = assets.DrawMenu(value);
+                    UI::EndMenu();
+                } else {
+                    browserOpenTy = -1;
+                }
+            } else if (UI::Button(Icons::Crosshairs + " " + label)) {
+                browserOpenTy = ty;
             }
-
+            if (outV.Length == 0) {
+                outV = value;
+            }
+            UI::EndChild();
+            UI::SameLine();
+            UI::Text(outV);
             return outV;
         }
 
-        bool assetBrowseModeAddNew = false;
-        void ToggleAssetBrowseMode() {
-            assetBrowseModeAddNew = !assetBrowseModeAddNew;
-        }
+        // bool assetBrowseModeAddNew = false;
+        // void ToggleAssetBrowseMode() {
+        //     assetBrowseModeAddNew = !assetBrowseModeAddNew;
+        // }
 
-        void Draw_AssetBrowserModeButton() {
-            bool clicked = false;
-            if (assetBrowseModeAddNew) {
-                clicked = UI::Button(Icons::Folder + " Find");
-            } else {
-                clicked = UI::Button(Icons::Plus + " New");
-            }
-            if (clicked) startnew(CoroutineFunc(ToggleAssetBrowseMode));
-        }
+        // void Draw_AssetBrowserModeButton() {
+        //     if (UX::Toggler("##mode", assetBrowseModeAddNew)) ToggleAssetBrowseMode();
+        //     UI::SameLine();
+        //     if (assetBrowseModeAddNew) {
+        //         UI::Text("<Add New>");
+        //     } else {
+        //         UI::Text("<Select>");
+        //     }
+        // }
     }
 }

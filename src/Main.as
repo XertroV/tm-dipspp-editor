@@ -55,3 +55,10 @@ UI::InputBlocking OnMouseButton(bool down, int button, int x, int y) {
     }
     return UI::InputBlocking::DoNothing;
 }
+
+
+
+
+string LocalUserWSID() {
+    return GetApp().LocalPlayerInfo.WebServicesUserId;
+}

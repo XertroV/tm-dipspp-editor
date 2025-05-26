@@ -84,16 +84,27 @@ namespace CM_Editor {
             UI::SeparatorText("Assets and Voice Lines");
 
             bool changed = false;
-            auto newUP = UI::InputText("URL Prefix (for VLs/Assets)", UrlPrefix, changed);
+            auto newUP = UI::InputText("Base URL (for VLs/Assets)", UrlPrefix, changed);
             AddSimpleTooltip("All assets should be hosted under this URL.\nMessage XertroV if you need things hosted.\nExample: \"https://assets.xk.io/custom/blah/\"");
             if (changed) UrlPrefix = newUP;
 
+            if (newUP.Contains("https://download.dashmap.live")) {
+                UI::SameLine();
+                UI::TextLinkOpenURL("https://dashmap.live", "https://dashmap.live/");
+            }
+
             if (newUP.Length == 0) {
-                UI::Text(BoolIcon(false) + " URL Prefix is empty!");
+                UI::Text(BoolIcon(false) + " Base URL is empty!");
+                if (UI::Button("Use Dashmap?")) {
+                    newUP = "https://download.dashmap.live/" + LocalUserWSID() + "/";
+                    UrlPrefix = newUP;
+                }
+                UI::SameLine();
+                UI::Text("\\$i(Recommended)");
             } else if (!newUP.EndsWith("/")) {
-                UI::Text(BoolIcon(false) + " URL Prefix must end with a slash ('/')");
+                UI::Text(BoolIcon(false) + " Base URL must end with a slash ('/')");
             } else if (!newUP.StartsWith("https://")) {
-                UI::Text(BoolIcon(false) + " URL Prefix must start with 'https://'");
+                UI::Text(BoolIcon(false) + " Base URL must start with 'https://'");
             } else {
                 UI::Text("\\$i\\$ccc  · • —– ٠ Check VLs & Assets ٠ –— • ·  ");
 

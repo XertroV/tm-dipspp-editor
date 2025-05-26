@@ -215,8 +215,8 @@ namespace CM_Editor {
             }
         }
 
-        string AssetBrowser(const string &in label, const string &in value, AssetTy ty, bool allowAdd = true) {
-            return GetAssetsComponent().Browser(label, value, ty, allowAdd);
+        string AssetBrowser(const string &in label, const string &in value, AssetTy ty) {
+            return GetAssetsComponent().Browser(label, value, ty);
         }
     }
 }
