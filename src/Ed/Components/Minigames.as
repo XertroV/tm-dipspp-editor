@@ -87,24 +87,29 @@ namespace CM_Editor {
         bool anyOrder;
 
         TimeTrialMinigameParams() {
-            @startTrigger = EditableTrigger(DEFAULT_VL_POS, DEFAULT_MT_SIZE, "Start");
-            @endTrigger = EditableTrigger(DEFAULT_VL_POS, DEFAULT_MT_SIZE, "End");
+            super();
+            @startTrigger = EditableTrigger(DEFAULT_VL_POS, DEFAULT_MT_SIZE, "Start", "Start");
+            @endTrigger = EditableTrigger(DEFAULT_VL_POS, DEFAULT_MT_SIZE, "End", "End");
             anyOrder = false;
         }
-        TimeTrialMinigameParams(const Json::Value@ json) {
-            // Load triggers from json
+        TimeTrialMinigameParams(Json::Value@ json) {
+            super(json);
             @startTrigger = EditableTrigger(json.Get("startTrigger", Json::Value()), DEFAULT_VL_POS, DEFAULT_MT_SIZE, "Start");
+            startTrigger.name = "Start";
             @endTrigger = EditableTrigger(json.Get("endTrigger", Json::Value()), DEFAULT_VL_POS, DEFAULT_MT_SIZE, "End");
+            endTrigger.name = "End";
             anyOrder = json.Get("anyOrder", false);
             // Load checkpoints
             checkpoints.Resize(0);
             auto arr = json.Get("checkpoints", Json::Array());
             for (uint i = 0; i < arr.Length; i++) {
-                checkpoints.InsertLast(EditableTrigger(arr[i], DEFAULT_VL_POS, DEFAULT_MT_SIZE, "Checkpoint"));
+                auto cp = EditableTrigger(arr[i], DEFAULT_VL_POS, DEFAULT_MT_SIZE, "Checkpoint");
+                cp.name = "Checkpoint " + (i+1);
+                checkpoints.InsertLast(cp);
             }
         }
         Json::Value@ ToJson() override {
-            auto j = Json::Object();
+            auto j = MinigameParams::ToJson();
             j["startTrigger"] = startTrigger.ToJson();
             j["endTrigger"] = endTrigger.ToJson();
             j["anyOrder"] = anyOrder;
@@ -132,8 +137,70 @@ namespace CM_Editor {
                 UI::PopID();
             }
             if (UI::Button(Icons::Plus + " Add Checkpoint")) {
-                checkpoints.InsertLast(EditableTrigger(DEFAULT_VL_POS, DEFAULT_MT_SIZE, "Checkpoint"));
+                auto cp = EditableTrigger(DEFAULT_VL_POS, DEFAULT_MT_SIZE, "Checkpoint", "Checkpoint " + (checkpoints.Length+1));
+                checkpoints.InsertLast(cp);
             }
+        }
+    }
+
+    // --- JumpHighMinigameParams ---
+    class JumpHighMinigameParams : MinigameParams {
+        EditableTrigger@ startTrigger;
+
+        JumpHighMinigameParams() {
+            super();
+            @startTrigger = EditableTrigger(DEFAULT_VL_POS, DEFAULT_MT_SIZE, "Start", "Start");
+        }
+
+        JumpHighMinigameParams(Json::Value@ json) {
+            super(json);
+            @startTrigger = EditableTrigger(json.Get("startTrigger", Json::Value()), DEFAULT_VL_POS, DEFAULT_MT_SIZE, "Start");
+            startTrigger.name = "Start";
+        }
+
+        Json::Value@ ToJson() override {
+            auto j = MinigameParams::ToJson();
+            j["startTrigger"] = startTrigger.ToJson();
+            return j;
+        }
+
+        void DrawEditorUI() {
+            UI::Text("Start Trigger");
+            startTrigger.DrawEditorUI();
+        }
+    }
+
+    // --- MaxAvgSpeedMinigameParams ---
+    class MaxAvgSpeedMinigameParams : MinigameParams {
+        EditableTrigger@ startTrigger;
+        EditableTrigger@ endTrigger;
+
+        MaxAvgSpeedMinigameParams() {
+            super();
+            @startTrigger = EditableTrigger(DEFAULT_VL_POS, DEFAULT_MT_SIZE, "Start", "Start");
+            @endTrigger = EditableTrigger(DEFAULT_VL_POS, DEFAULT_MT_SIZE, "End", "End");
+        }
+
+        MaxAvgSpeedMinigameParams(Json::Value@ json) {
+            super(json);
+            @startTrigger = EditableTrigger(json.Get("startTrigger", Json::Value()), DEFAULT_VL_POS, DEFAULT_MT_SIZE, "Start");
+            startTrigger.name = "Start";
+            @endTrigger = EditableTrigger(json.Get("endTrigger", Json::Value()), DEFAULT_VL_POS, DEFAULT_MT_SIZE, "End");
+            endTrigger.name = "End";
+        }
+
+        Json::Value@ ToJson() override {
+            auto j = MinigameParams::ToJson();
+            j["startTrigger"] = startTrigger.ToJson();
+            j["endTrigger"] = endTrigger.ToJson();
+            return j;
+        }
+
+        void DrawEditorUI() {
+            UI::Text("Start Trigger");
+            startTrigger.DrawEditorUI();
+            UI::Text("End Trigger");
+            endTrigger.DrawEditorUI();
         }
     }
 
@@ -178,6 +245,7 @@ namespace CM_Editor {
                 // fallback
             }
         }
+        void DrawNvgBoxes() {}
     }
 
     class TimeTrialMinigame : Minigame {
@@ -191,6 +259,65 @@ namespace CM_Editor {
             UI::Text("Name: " + name);
             TimeTrialMinigameParams@ ttParams = cast<TimeTrialMinigameParams@>(params);
             if (ttParams !is null) ttParams.DrawEditorUI();
+        }
+        void DrawNvgBoxes() override {
+            TimeTrialMinigameParams@ params = cast<TimeTrialMinigameParams@>(this.params);
+            if (params !is null) {
+                params.startTrigger.DrawNvgBox();
+                params.endTrigger.DrawNvgBox();
+                for (uint i = 0; i < params.checkpoints.Length; i++) {
+                    params.checkpoints[i].DrawNvgBox();
+                }
+            }
+        }
+    }
+
+    class JumpHighMinigame : Minigame {
+        JumpHighMinigame(Json::Value@ json) {
+            super(json);
+            @params = JumpHighMinigameParams(json["params"]);
+        }
+
+        JumpHighMinigame(const string &in _name) {
+            super(_name, MinigameType::JumpHigh);
+            @params = JumpHighMinigameParams();
+        }
+
+        void DrawEditor() override {
+            UI::Text("Name: " + name);
+            JumpHighMinigameParams@ jhParams = cast<JumpHighMinigameParams@>(params);
+            if (jhParams !is null) jhParams.DrawEditorUI();
+        }
+        void DrawNvgBoxes() override {
+            JumpHighMinigameParams@ params = cast<JumpHighMinigameParams@>(this.params);
+            if (params !is null) {
+                params.startTrigger.DrawNvgBox();
+            }
+        }
+    }
+
+    class MaxAvgSpeedMinigame : Minigame {
+        MaxAvgSpeedMinigame(Json::Value@ json) {
+            super(json);
+            @params = MaxAvgSpeedMinigameParams(json["params"]);
+        }
+
+        MaxAvgSpeedMinigame(const string &in _name) {
+            super(_name, MinigameType::MaxAvgSpeed);
+            @params = MaxAvgSpeedMinigameParams();
+        }
+
+        void DrawEditor() override {
+            UI::Text("Name: " + name);
+            MaxAvgSpeedMinigameParams@ masParams = cast<MaxAvgSpeedMinigameParams@>(params);
+            if (masParams !is null) masParams.DrawEditorUI();
+        }
+        void DrawNvgBoxes() override {
+            MaxAvgSpeedMinigameParams@ params = cast<MaxAvgSpeedMinigameParams@>(this.params);
+            if (params !is null) {
+                params.startTrigger.DrawNvgBox();
+                params.endTrigger.DrawNvgBox();
+            }
         }
     }
 
@@ -211,6 +338,10 @@ namespace CM_Editor {
                 auto type = MinigameType(int(json[i].Get("type", 0)));
                 if (type == MinigameType::TimeTrial) {
                     minigames.InsertLast(TimeTrialMinigame(json[i]));
+                } else if (type == MinigameType::JumpHigh) {
+                    minigames.InsertLast(JumpHighMinigame(json[i]));
+                } else if (type == MinigameType::MaxAvgSpeed) {
+                    minigames.InsertLast(MaxAvgSpeedMinigame(json[i]));
                 } else {
                     minigames.InsertLast(Minigame(json[i]));
                 }
@@ -226,10 +357,6 @@ namespace CM_Editor {
         }
 
         void DrawComponentInner(ProjectTab@ pTab) override {
-            if (UI::Button("Add New Minigame")) {
-                // Add a default minigame (e.g., TimeTrial)
-                AddMinigame(TimeTrialMinigame("New Minigame"));
-            }
             DrawEditorUI();
         }
 
@@ -256,11 +383,15 @@ namespace CM_Editor {
                 editingIx = -1; // Exit editing mode
             }
             UI::Separator();
-            minigames[editingIx].DrawEditor();
+            if (editingIx >= 0) {
+                minigames[editingIx].DrawEditor();
+                minigames[editingIx].DrawNvgBoxes();
+            }
             UI::PopID();
         }
 
         void DrawMinigameListUI() {
+            DrawAddMinigameButton();
             for (uint i = 0; i < minigames.Length; i++) {
                 UI::PushID(int(i));
                 UI::Text("Minigame " + (i + 1) + ": " + minigames[i].name);
@@ -275,17 +406,19 @@ namespace CM_Editor {
                 UI::PopID();
             }
 
-            DrawAddMinigameButton();
         }
 
         void DrawAddMinigameButton() {
             if (UI::BeginCombo("Add New Minigame", "Select Type")) {
-                if (UI::Selectable("TimeTrial")) {
+                if (UI::Selectable("Time Trial", false)) {
                     AddMinigame(TimeTrialMinigame("New TimeTrial Minigame"));
                 }
-                // if (UI::Selectable("Generic")) {
-                //     AddMinigame(Minigame("New Generic Minigame", MinigameType::Unknown));
-                // }
+                if (UI::Selectable("Jump High", false)) {
+                    AddMinigame(JumpHighMinigame("New JumpHigh Minigame"));
+                }
+                if (UI::Selectable("Max Avg Speed", false)) {
+                    AddMinigame(MaxAvgSpeedMinigame("New MaxAvgSpeed Minigame"));
+                }
                 UI::EndCombo();
             }
         }

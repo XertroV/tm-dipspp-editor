@@ -46,6 +46,14 @@ namespace CM_Editor {
         }
         void DrawNvgBox(const vec4 &in color = cOrange) const {
             nvgDrawWorldBox(get_posMin(), size, color);
+            // Draw the trigger's name above the box
+            vec3 textPos = posBottomCenter + vec3(0, size.y * .5, 0); // middle
+            vec3 screenPos = Camera::ToScreen(textPos);
+            if (screenPos.z < 0) {
+                nvg::TextAlign(nvg::Align::Center | nvg::Align::Middle);
+                nvg::FontSize(32. * g_screen.y / 1440.0);
+                nvgDrawTextWithStroke(screenPos.xy, name.Length > 0 ? name : label, cOrange);
+            }
         }
         void DrawEditorUI() {
             if (isEditing) {
