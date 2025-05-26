@@ -204,7 +204,117 @@ namespace CM_Editor {
         }
     }
 
-    // --- Minigame base and TimeTrialMinigame ---
+    // --- TimeOffGroundMinigameParams ---
+    class TimeOffGroundMinigameParams : MinigameParams {
+        EditableTrigger@ startTrigger;
+
+        TimeOffGroundMinigameParams() {
+            super();
+            @startTrigger = EditableTrigger(DEFAULT_VL_POS, DEFAULT_MT_SIZE, "Start", "Start");
+        }
+
+        TimeOffGroundMinigameParams(Json::Value@ json) {
+            super(json);
+            @startTrigger = EditableTrigger(json.Get("startTrigger", Json::Value()), DEFAULT_VL_POS, DEFAULT_MT_SIZE, "Start");
+            startTrigger.name = "Start";
+        }
+
+        Json::Value@ ToJson() override {
+            auto j = MinigameParams::ToJson();
+            j["startTrigger"] = startTrigger.ToJson();
+            return j;
+        }
+
+        void DrawEditorUI() {
+            startTrigger.name = "Start";
+            UI::Text("Start Trigger");
+            startTrigger.DrawEditorUI();
+        }
+    }
+
+    // --- PuzzleLocationsMinigameParams and PuzzleLocStep ---
+    class PuzzleLocStep {
+        string nextHint;
+        EditableTrigger@ trigger;
+        string hintImage;
+
+        PuzzleLocStep() {
+            nextHint = "";
+            @trigger = EditableTrigger(DEFAULT_VL_POS, DEFAULT_MT_SIZE, "PuzzleLocStep", "Step");
+            hintImage = "";
+        }
+        PuzzleLocStep(Json::Value@ json) {
+            nextHint = json.Get("nextHint", "");
+            @trigger = EditableTrigger(json.Get("trigger", Json::Value()), DEFAULT_VL_POS, DEFAULT_MT_SIZE, "PuzzleLocStep", "Step");
+            hintImage = json.Get("hintImage", "");
+        }
+        Json::Value@ ToJson() const {
+            auto j = Json::Object();
+            j["nextHint"] = nextHint;
+            j["trigger"] = trigger.ToJson();
+            j["hintImage"] = hintImage;
+            return j;
+        }
+        void DrawEditorUI(ProjectTab@ pTab) {
+            nextHint = UI::InputText("Next Hint", nextHint);
+            UI::Text("Trigger");
+            trigger.DrawEditorUI();
+            hintImage = pTab.AssetBrowser("Hint Image", hintImage, AssetTy::Image);
+            if (hintImage.Length > 0) {
+                UI::Text("Selected Image: " + hintImage);
+            }
+        }
+        void DrawNvgBox() {
+            trigger.DrawNvgBox();
+        }
+    }
+
+    class PuzzleLocationsMinigameParams : MinigameParams {
+        array<PuzzleLocStep@> steps;
+
+        PuzzleLocationsMinigameParams() {
+            super();
+        }
+        PuzzleLocationsMinigameParams(Json::Value@ json) {
+            super(json);
+            steps.Resize(0);
+            Json::Value arr = json.Get("steps", Json::Array());
+            for (uint i = 0; i < arr.Length; i++) {
+                steps.InsertLast(PuzzleLocStep(arr[i]));
+            }
+        }
+        Json::Value@ ToJson() override {
+            auto j = MinigameParams::ToJson();
+            auto arr = Json::Array();
+            for (uint i = 0; i < steps.Length; i++) {
+                arr.Add(steps[i].ToJson());
+            }
+            j["steps"] = arr;
+            return j;
+        }
+        void DrawEditorUI(ProjectTab@ pTab) {
+            UI::Text("Puzzle Steps: " + steps.Length);
+            for (uint i = 0; i < steps.Length; i++) {
+                UI::PushID(int(i));
+                steps[i].DrawEditorUI(pTab);
+                if (UI::Button(Icons::Trash + " Remove Step##" + i)) {
+                    steps.RemoveAt(i);
+                    i--;
+                }
+                UI::Separator();
+                UI::PopID();
+            }
+            if (UI::Button(Icons::Plus + " Add Step")) {
+                steps.InsertLast(PuzzleLocStep());
+            }
+        }
+        void DrawNvgBoxes() {
+            for (uint i = 0; i < steps.Length; i++) {
+                steps[i].DrawNvgBox();
+            }
+        }
+    }
+
     class Minigame {
         string name;
         MinigameType type;
@@ -230,7 +340,8 @@ namespace CM_Editor {
             j["params"] = params.ToJson();
             return j;
         }
-        void DrawEditor() {
+        void DrawEditor(ProjectTab@ pTab) {
+            UI::Text("OVERRIDE ME");
             UI::Text("Name: " + name);
             UI::Text("Type: " + tostring(type));
             // Optionally allow renaming/type change here
@@ -253,7 +364,7 @@ namespace CM_Editor {
             super(_name, MinigameType::TimeTrial);
             @params = TimeTrialMinigameParams();
         }
-        void DrawEditor() override {
+        void DrawEditor(ProjectTab@ pTab) override {
             UI::Text("Name: " + name);
             TimeTrialMinigameParams@ ttParams = cast<TimeTrialMinigameParams@>(params);
             if (ttParams !is null) ttParams.DrawEditorUI();
@@ -281,7 +392,7 @@ namespace CM_Editor {
             @params = JumpHighMinigameParams();
         }
 
-        void DrawEditor() override {
+        void DrawEditor(ProjectTab@ pTab) override {
             UI::Text("Name: " + name);
             JumpHighMinigameParams@ jhParams = cast<JumpHighMinigameParams@>(params);
             if (jhParams !is null) jhParams.DrawEditorUI();
@@ -305,7 +416,7 @@ namespace CM_Editor {
             @params = MaxAvgSpeedMinigameParams();
         }
 
-        void DrawEditor() override {
+        void DrawEditor(ProjectTab@ pTab) override {
             UI::Text("Name: " + name);
             MaxAvgSpeedMinigameParams@ masParams = cast<MaxAvgSpeedMinigameParams@>(params);
             if (masParams !is null) masParams.DrawEditorUI();
@@ -316,6 +427,50 @@ namespace CM_Editor {
                 params.startTrigger.DrawNvgBox();
                 params.endTrigger.DrawNvgBox();
             }
+        }
+    }
+
+    class TimeOffGroundMinigame : Minigame {
+        TimeOffGroundMinigame(Json::Value@ json) {
+            super(json);
+            @params = TimeOffGroundMinigameParams(json["params"]);
+        }
+
+        TimeOffGroundMinigame(const string &in _name) {
+            super(_name, MinigameType::TimeOffGround);
+            @params = TimeOffGroundMinigameParams();
+        }
+
+        void DrawEditor(ProjectTab@ pTab) override {
+            UI::Text("Name: " + name);
+            TimeOffGroundMinigameParams@ togParams = cast<TimeOffGroundMinigameParams@>(params);
+            if (togParams !is null) togParams.DrawEditorUI();
+        }
+        void DrawNvgBoxes() override {
+            TimeOffGroundMinigameParams@ params = cast<TimeOffGroundMinigameParams@>(this.params);
+            if (params !is null) {
+                params.startTrigger.DrawNvgBox();
+            }
+        }
+    }
+
+    class PuzzleLocationsMinigame : Minigame {
+        PuzzleLocationsMinigame(Json::Value@ json) {
+            super(json);
+            @params = PuzzleLocationsMinigameParams(json["params"]);
+        }
+        PuzzleLocationsMinigame(const string &in _name) {
+            super(_name, MinigameType::PuzzleLocations);
+            @params = PuzzleLocationsMinigameParams();
+        }
+        void DrawEditor(ProjectTab@ pTab) override {
+            UI::Text("Name: " + name);
+            PuzzleLocationsMinigameParams@ plParams = cast<PuzzleLocationsMinigameParams@>(params);
+            if (plParams !is null) plParams.DrawEditorUI(pTab);
+        }
+        void DrawNvgBoxes() override {
+            PuzzleLocationsMinigameParams@ params = cast<PuzzleLocationsMinigameParams@>(this.params);
+            if (params !is null) params.DrawNvgBoxes();
         }
     }
 
@@ -349,6 +504,10 @@ namespace CM_Editor {
                         @minigame = JumpHighMinigame(gameJson);
                     } else if (type == MinigameType::MaxAvgSpeed) {
                         @minigame = MaxAvgSpeedMinigame(gameJson);
+                    } else if (type == MinigameType::TimeOffGround) {
+                        @minigame = TimeOffGroundMinigame(gameJson);
+                    } else if (type == MinigameType::PuzzleLocations) {
+                        @minigame = PuzzleLocationsMinigame(gameJson);
                     } else {
                         // Handle other types or unknown
                         warn("Unknown MinigameType: " + tostring(type));
@@ -369,7 +528,7 @@ namespace CM_Editor {
         }
 
         void DrawComponentInner(ProjectTab@ pTab) override {
-            DrawEditorUI();
+            DrawEditorUI(pTab);
         }
 
         void AddMinigame(Minigame@ minigame) {
@@ -380,15 +539,15 @@ namespace CM_Editor {
             rw_data = Json::Array();
             minigames.Resize(0);
         }
-        void DrawEditorUI() {
+        void DrawEditorUI(ProjectTab@ pTab) {
             if (editingIx != -1) {
-                DrawEditingMinigameUI();
+                DrawEditingMinigameUI(pTab);
             } else {
                 DrawMinigameListUI();
             }
         }
 
-        void DrawEditingMinigameUI() {
+        void DrawEditingMinigameUI(ProjectTab@ pTab) {
             UI::PushID(tostring(editingIx));
             auto minigame = minigames[editingIx];
             UI::Text("Editing Minigame: " + minigame.name);
@@ -399,7 +558,7 @@ namespace CM_Editor {
             }
             UI::Separator();
             if (editingIx >= 0) {
-                minigame.DrawEditor();
+                minigame.DrawEditor(pTab);
                 minigame.DrawNvgBoxes();
             }
             UI::PopID();
@@ -433,6 +592,12 @@ namespace CM_Editor {
                 }
                 if (UI::Selectable("Max Avg Speed", false)) {
                     AddMinigame(MaxAvgSpeedMinigame("New MaxAvgSpeed Minigame"));
+                }
+                if (UI::Selectable("Time Off Ground", false)) {
+                    AddMinigame(TimeOffGroundMinigame("New TimeOffGround Minigame"));
+                }
+                if (UI::Selectable("Puzzle Locations", false)) {
+                    AddMinigame(PuzzleLocationsMinigame("New PuzzleLocations Minigame"));
                 }
                 UI::EndCombo();
             }
