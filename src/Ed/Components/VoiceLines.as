@@ -107,6 +107,8 @@ namespace CM_Editor {
         "Click to open an example subtitles file in the browser.\n";
 
     class ProjectVoiceLinesComponent : ProjectComponent {
+        array<VoiceLineEl@> m_voiceLines;
+
         ProjectVoiceLinesComponent(const string &in jsonPath, ProjectMeta@ meta) {
             super(jsonPath, meta);
             name = "Voice Lines";
@@ -116,23 +118,24 @@ namespace CM_Editor {
         }
 
         // proxy methods for data access (px = proxy)
-        uint get_nbLines() const { return ro_data.HasKey("lines") ? ro_data["lines"].Length : 0; }
-        VoiceLineEl getLine(uint i) const { return VoiceLineEl(ro_data["lines"][i]); }
-        void setLine(uint i, VoiceLineEl@ vl) { rw_lines[i] = vl.ToJson(); }
-        // string get_UrlPrefix() const { return ro_data.Get("urlPrefix", ""); }
-        // void set_UrlPrefix(const string &in v) { rw_data["urlPrefix"] = v; }
+        uint get_nbLines() const { return m_voiceLines.Length; }
+        VoiceLineEl@ getLine(uint i) const { return m_voiceLines[i]; }
+        void setLine(uint i, VoiceLineEl@ vl) { @m_voiceLines[i] = vl; }
 
-        Json::Value@ get_rw_lines() {
-            if (!ro_data.HasKey("lines") || ro_data["lines"].GetType() != Json::Type::Array) {
-                rw_data["lines"] = Json::Array();
+        void TryLoadingJson(const string&in jFName) override {
+            ProjectComponent::TryLoadingJson(jFName);
+            m_voiceLines.RemoveRange(0, m_voiceLines.Length);
+            if (ro_data.HasKey("lines") && ro_data["lines"].GetType() == Json::Type::Array) {
+                auto arr = ro_data["lines"];
+                for (uint i = 0; i < arr.Length; i++) {
+                    m_voiceLines.InsertLast(VoiceLineEl(arr[i]));
+                }
             }
-            return rw_data["lines"];
         }
 
         int PushVoiceLine(VoiceLineEl@ vl) {
-            auto @lines = rw_lines;
-            lines.Add(vl.ToJson());
-            return lines.Length - 1;
+            m_voiceLines.InsertLast(vl);
+            return int(m_voiceLines.Length - 1);
         }
 
         void CreateDefaultJsonObject() override {
@@ -140,9 +143,16 @@ namespace CM_Editor {
             j["lines"] = Json::Array();
             j["urlPrefix"] = "";
             rw_data = j;
+            m_voiceLines.RemoveRange(0, m_voiceLines.Length);
         }
 
         void SaveToFile() override {
+            // Serialize m_voiceLines to json
+            auto arr = Json::Array();
+            for (uint i = 0; i < m_voiceLines.Length; i++) {
+                arr.Add(m_voiceLines[i].ToJson());
+            }
+            rw_data["lines"] = arr;
             ProjectComponent::SaveToFile();
             editingVL = -1;
         }
@@ -222,8 +232,7 @@ namespace CM_Editor {
 
         void OnDeleteVoiceLine(int64 i) {
             if (i >= int64(nbLines)) return;
-            auto @lines = rw_lines;
-            lines.Remove(i);
+            m_voiceLines.RemoveAt(i);
             editingVL = -1;
             SaveToFile();
         }
