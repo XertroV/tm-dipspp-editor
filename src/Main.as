@@ -31,13 +31,16 @@ bool g_InterceptClickRequiresTestMode = false;
 // x, y, button
 int3 g_InterceptedMouseClickPosBtn = int3();
 CM_Editor::ProjectComponent@ componentWaitingForMouseClick = null;
+CM_Editor::EditableTrigger@ g_CurrentEditableTrigger = null;
 
 void OnInterceptedMouseClick(int x, int y, int button) {
     g_InterceptedMouseClickPosBtn.x = x;
     g_InterceptedMouseClickPosBtn.y = y;
     g_InterceptedMouseClickPosBtn.z = button;
     g_InterceptOnMouseClick = false;
-    if (componentWaitingForMouseClick !is null) {
+    if (g_CurrentEditableTrigger !is null && g_CurrentEditableTrigger.isEditing) {
+        CM_Editor::HandleGlobalTriggerMouseClick();
+    } else if (componentWaitingForMouseClick !is null) {
         try {
             componentWaitingForMouseClick.OnMouseClick(x, y, button);
         } catch {

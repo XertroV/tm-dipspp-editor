@@ -2,45 +2,33 @@ namespace CM_Editor {
 
     // MARK: VoiceLines Cmpnt
 
-    const vec3 DEFAULT_MT_SIZE = vec3(10.6666667, 8, 10.6666667);
-    const vec3 DEFAULT_VL_POS = vec3(32, 8, 32) - vec3(10.6666667, 0, 10.6666667) * 0.5;
-
     class VoiceLineEl {
         string file;
         string subtitles;
         string imageAsset;
         int subtitleParts = 0;
-        vec3 posBottomCenter = DEFAULT_VL_POS;
-        vec3 size = DEFAULT_MT_SIZE;
+        EditableTrigger@ trigger;
 
-        VoiceLineEl() {}
+        VoiceLineEl() {
+            @trigger = EditableTrigger(DEFAULT_VL_POS, DEFAULT_MT_SIZE, "VL");
+        }
         VoiceLineEl(const Json::Value@ j) {
             file = j.Get("file", "");
             subtitles = j.Get("subtitles", "");
             imageAsset = j.Get("imageAsset", "");
-            posBottomCenter = JsonToVec3(j["pos"], DEFAULT_VL_POS);
-            size = JsonToVec3(j["size"], DEFAULT_MT_SIZE);
+            @trigger = EditableTrigger(j.Get("trigger", Json::Value()), DEFAULT_VL_POS, DEFAULT_MT_SIZE, "VL");
             subtitleParts = subtitles.Split("\n").Length;
         }
-
-        vec3 get_posMin() {
-            return posBottomCenter - size * vec3(0.5, 0, 0.5);
-        }
-
+        vec3 get_posMin() const { return trigger.get_posMin(); }
         Json::Value ToJson() {
             auto j = Json::Object();
             j["file"] = file;
             j["subtitles"] = subtitles;
             j["imageAsset"] = imageAsset;
-            j["pos"] = Vec3ToJson(posBottomCenter);
-            j["size"] = Vec3ToJson(size);
+            j["trigger"] = trigger.ToJson();
             return j;
         }
-
-        string PosStr() {
-            return "< " + posBottomCenter.x + ", " + posBottomCenter.y + ", " + posBottomCenter.z + " >";
-        }
-
+        string PosStr() const { return trigger.PosStr(); }
         void DrawEditor(ProjectVoiceLinesComponent@ cmp, ProjectTab@ pTab) {
             bool changedFile = false, changedSubtitles = false;
             string fullUrl = pTab.GetUrlPrefix() + file;
@@ -87,23 +75,7 @@ namespace CM_Editor {
 
             UI::Separator();
 
-            if (cmp.IAmAwaitingMouseClick) {
-                posBottomCenter = GetEditorItemCursorPos() - vec3(0, 0.5, 0);
-                UI::BeginDisabled();
-                UI::InputFloat3("Position##pos", posBottomCenter, "%.3f", UI::InputTextFlags::ReadOnly);
-                UI::EndDisabled();
-                cmp.DrawInstructionText("Place Car at Trigger Location", false);
-            } else {
-                posBottomCenter = UI::InputFloat3("Position##pos", posBottomCenter);
-            }
-            UI::SameLine();
-            if (UI::Button(Icons::PencilSquareO + " Set")) OnClickSetPos(cmp);
-
-            size = UI::InputFloat3("Size##size", size);
-
-            if (UI::Button(Icons::Eye + " Show")) {
-                SetEditorCameraToPos(posBottomCenter);
-            }
+            trigger.DrawEditorUI();
 
             UI::Separator();
             UI::Text("Hints:");
@@ -198,7 +170,7 @@ namespace CM_Editor {
         void DrawSelectedVLBox() {
             if (editingVL != -1) @vlToDraw = getLine(editingVL);
             if (vlToDraw is null) return;
-            nvgDrawWorldBox(vlToDraw.posMin, vlToDraw.size, cOrange);
+            vlToDraw.trigger.DrawNvgBox();
         }
 
         int editingVL = -1;
@@ -315,16 +287,12 @@ namespace CM_Editor {
         void OnSetVoiceLineToDraw(VoiceLineEl@ vl, bool focusCamera = true) {
             @vlToDraw = vl;
             if (focusCamera) {
-                SetEditorCameraToPos(vl.posBottomCenter, vl.size.Length() * 4.0);
+                SetEditorCameraToPos(vl.trigger.posBottomCenter, vl.trigger.size.Length() * 4.0);
             }
         }
 
         void OnMouseClick(int x, int y, int button) override {
-            if (!EditorIsInTestPlaceMode()) {
-                // doing something else like moving camera. requeue intercept
-                startnew(CoroutineFunc(OnSelfAwaitingMouseClick));
-                return;
-            }
+            HandleGlobalTriggerMouseClick();
         }
     }
 

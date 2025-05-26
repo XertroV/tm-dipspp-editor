@@ -259,27 +259,26 @@ namespace CM_Editor {
                 NotifyWarning("Some other component is waiting for a mouse click: " + componentWaitingForMouseClick.name);
             }
         }
+    }
 
-        // utility for drawing nvg instruction text easily.
-        void DrawInstructionText(const string &in text, bool alsoUI) {
-            if (alsoUI) UI::Text(text);
-            nvg::Reset();
-            auto fontSize = 64.0 * g_screen.y / 1440.0;
-            nvg::FontSize(fontSize);
-            auto bounds = nvg::TextBounds(text) + vec2(fontSize * 0.25);
-            auto midPoint = g_screen * vec2(.5, .2);
-            auto bgRect = vec4(midPoint - bounds * 0.5, bounds);
+    // utility for drawing nvg instruction text easily.
+    void DrawInstructionText(const string &in text, bool alsoUI) {
+        if (alsoUI) UI::Text(text);
+        nvg::Reset();
+        auto fontSize = 64.0 * g_screen.y / 1440.0;
+        nvg::FontSize(fontSize);
+        auto bounds = nvg::TextBounds(text) + vec2(fontSize * 0.25);
+        auto midPoint = g_screen * vec2(.5, .2);
+        auto bgRect = vec4(midPoint - bounds * 0.5, bounds);
 
-            nvg::BeginPath();
-            nvg::FillColor(cBlack);
-            nvg::RoundedRect(bgRect.xy, bgRect.zw, 8);
-            nvg::Fill();
-            nvg::ClosePath();
+        nvg::BeginPath();
+        nvg::FillColor(cBlack);
+        nvg::RoundedRect(bgRect.xy, bgRect.zw, 8);
+        nvg::Fill();
+        nvg::ClosePath();
 
-            nvg::TextAlign(nvg::Align::Center | nvg::Align::Middle);
-            nvgDrawTextWithStroke(midPoint, text, cOrange);
-        }
-
+        nvg::TextAlign(nvg::Align::Center | nvg::Align::Middle);
+        nvgDrawTextWithStroke(midPoint, text, cOrange);
     }
 
 }

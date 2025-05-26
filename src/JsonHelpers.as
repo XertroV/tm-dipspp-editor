@@ -8,7 +8,10 @@ Json::Value@ Nat2ToJson(const nat2 &in v) {
 
 vec3 JsonToVec3(const Json::Value@ j, const vec3 &in defaultValue = vec3(0, 0, 0)) {
     if (j.GetType() != Json::Type::Array) {
+#if DEV
         warn("non-array value passed to JsonToVec3");
+        PrintActiveContextStack(false);
+#endif
         return defaultValue;
     }
     if (j.Length < 3) {
