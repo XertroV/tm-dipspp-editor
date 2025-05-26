@@ -46,7 +46,7 @@ namespace CM_Editor {
             if (file.EndsWith(".mp3") && file.Length > 4) {
                 UI::Text(BoolIcon(true) + " file name looks good.");
             } else {
-                UI::Text(BoolIcon(false) + " file name should be an .mp3 file. (It is appended to UrlPrefix)");
+                UI::Text(BoolIcon(false) + " file name should be an .mp3 file. (It is appended to Base URL)");
             }
 
             UI::Separator();
@@ -135,7 +135,6 @@ namespace CM_Editor {
         void CreateDefaultJsonObject() override {
             auto j = Json::Object();
             j["lines"] = Json::Array();
-            j["urlPrefix"] = "";
             rw_data = j;
             m_voiceLines.RemoveRange(0, m_voiceLines.Length);
         }

@@ -309,6 +309,11 @@ namespace CM_Editor {
                 auto cat = categories[i];
                 ret = cat.DrawMenu(ret);
             }
+            UI::Separator();
+            if (UI::MenuItem(Icons::SquareO + " None")) {
+                ret = "";
+            }
+            UI::Separator();
             if (UI::BeginMenu("Add New Category")) {
                 bool e = false;
                 newCatName = UI::InputText("##newCat", newCatName, e, UI::InputTextFlags::EnterReturnsTrue);
@@ -524,9 +529,6 @@ namespace CM_Editor {
                 }
             } else if (UI::Button(Icons::Crosshairs + " " + label)) {
                 browserOpenTy = ty;
-            }
-            if (outV.Length == 0) {
-                outV = value;
             }
             UI::EndChild();
             UI::SameLine();
