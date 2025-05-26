@@ -65,8 +65,11 @@ namespace CM_Editor {
         }
         void OnMouseClick() {
             NotifyWarning("EditableTrigger OnMouseClick");
-            isEditing = false;
-            if (onEditDone !is null) onEditDone(this);
+            if (isEditing) {
+                isEditing = false;
+                startnew(RestoreEditorMode);
+                if (onEditDone !is null) onEditDone(this);
+            }
         }
 
         void StartTriggerEdit() {
@@ -81,7 +84,6 @@ namespace CM_Editor {
     void HandleGlobalTriggerMouseClick() {
         if (g_CurrentEditableTrigger !is null && g_CurrentEditableTrigger.isEditing) {
             startnew(CoroutineFunc(g_CurrentEditableTrigger.OnMouseClick));
-            g_CurrentEditableTrigger.isEditing = false;
         }
         @g_CurrentEditableTrigger = null;
     }

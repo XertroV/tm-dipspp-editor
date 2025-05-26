@@ -255,6 +255,7 @@ namespace CM_Editor {
             if (componentWaitingForMouseClick is this) {
                 @componentWaitingForMouseClick = null;
                 g_InterceptOnMouseClick = false;
+                if (thisTabClickRequiresTestPlaceMode) startnew(RestoreEditorMode);
             } else if (componentWaitingForMouseClick !is null) {
                 NotifyWarning("Some other component is waiting for a mouse click: " + componentWaitingForMouseClick.name);
             }

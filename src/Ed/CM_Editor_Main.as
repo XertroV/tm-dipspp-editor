@@ -108,10 +108,21 @@ void SetEditorCameraToPos(vec3 pos, float dist = -1.0) {
     if (dist > 0.0) pmt.CameraToTargetDistance = dist;
 }
 
+CGameEditorPluginMap::EPlaceMode beforeTM_PlaceMode = CGameEditorPluginMap::EPlaceMode::Block;
+CGameEditorPluginMap::EditMode beforeTM_EditMode = CGameEditorPluginMap::EditMode::Place;
+
 void SetEditorToTestMode() {
     auto editor = cast<CGameCtnEditorFree>(GetApp().Editor);
+    beforeTM_EditMode = editor.PluginMapType.EditMode;
+    beforeTM_PlaceMode = editor.PluginMapType.PlaceMode;
     editor.PluginMapType.PlaceMode = CGameEditorPluginMap::EPlaceMode::Test;
     editor.PluginMapType.EditMode = CGameEditorPluginMap::EditMode::Place;
+}
+
+void RestoreEditorMode() {
+    auto editor = cast<CGameCtnEditorFree>(GetApp().Editor);
+    editor.PluginMapType.PlaceMode = beforeTM_PlaceMode;
+    editor.PluginMapType.EditMode = beforeTM_EditMode;
 }
 
 vec3 GetEditorItemCursorPos() {
