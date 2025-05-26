@@ -256,6 +256,7 @@ namespace CM_Editor {
             return j;
         }
         void DrawEditorUI(ProjectTab@ pTab) {
+            trigger.name = UI::InputText("Step Name", trigger.name);
             nextHint = UI::InputText("Next Hint", nextHint);
             UI::Text("Trigger");
             trigger.DrawEditorUI();
@@ -566,13 +567,23 @@ namespace CM_Editor {
 
         void DrawMinigameListUI() {
             DrawAddMinigameButton();
+            UI::Separator();
+
             for (uint i = 0; i < minigames.Length; i++) {
                 UI::PushID(tostring(i));
                 UI::Text("Minigame " + (i + 1) + ": " + minigames[i].name);
+                auto p1 = UI::GetCursorPos();
+                UI::AlignTextToFramePadding();
+                UI::Text("Type: " + tostring(minigames[i].type));
+                UI::SameLine();
                 if (UI::Button("Edit##" + i)) {
                     editingIx = int(i); // Enter editing mode
                     this.OnDirty();
                 }
+                UI::SameLine();
+                auto p2 = UI::GetCursorPos();
+                UI::Dummy(vec2(300 - (p2.x - p1.x), 0));
+                UI::SameLine();
                 if (UI::Button("Remove##" + i)) {
                     minigames.RemoveAt(i);
                     i--;
@@ -585,6 +596,9 @@ namespace CM_Editor {
         }
 
         void DrawAddMinigameButton() {
+            UI::AlignTextToFramePadding();
+            UI::Text(Icons::Plus);
+            UI::SameLine();
             if (UI::BeginCombo("Add New Minigame", "Select Type")) {
                 if (UI::Selectable("Time Trial", false)) {
                     AddMinigame(TimeTrialMinigame("New TimeTrial Minigame"));
