@@ -267,6 +267,22 @@ namespace CM_Editor {
             return false;
         }
 
+        void AddAllAssetUrlsToChecker(const string &in urlPrefix, UrlChecks@ urlChecker) const {
+            for (uint i = 0; i < categories.Length; i++) {
+                auto cat = categories[i];
+                for (uint j = 0; j < cat.assets.files.Length; j++) {
+                    urlChecker.AddUrlCheck(urlPrefix + cat.assets.files[j]);
+                }
+            }
+        }
+
+        uint Count() const {
+            uint count = 0;
+            for (uint i = 0; i < categories.Length; i++) {
+                count += categories[i].assets.files.Length;
+            }
+            return count;
+        }
 
         void Draw() {
             AssetsCategory@ active;
@@ -338,14 +354,6 @@ namespace CM_Editor {
             ProjectComponent::SaveToFile();
         }
 
-        Json::Value@ getRwAssets(AssetTy ty) {
-            auto key = AssetTy_ToKey(ty);
-            if (!ro_data.HasKey(key) || ro_data[key].GetType() != Json::Type::Array) {
-                rw_data[key] = Json::Array();
-            }
-            return rw_data[key];
-        }
-
         void OnDirty() override {
             ProjectComponent::OnDirty();
             SetUrlChecksStale();
@@ -354,14 +362,6 @@ namespace CM_Editor {
         void SetUrlChecksStale() {
             imageUrlChecks.SetStale();
             soundUrlChecks.SetStale();
-        }
-
-        const Json::Value@ getRoAssets(AssetTy ty) {
-            auto key = AssetTy_ToKey(ty);
-            if (!ro_data.HasKey(key) || ro_data[key].GetType() != Json::Type::Array) {
-                rw_data[key] = Json::Array();
-            }
-            return ro_data[key];
         }
 
         AssetsCollection@ GetAssets(AssetTy ty) {
@@ -374,10 +374,8 @@ namespace CM_Editor {
         }
 
         void pushAsset(AssetTy ty, const string &in category, const string &in asset) {
-            // auto @assets = getRwAssets(ty);
-            // assets.Add(asset);
-            OnDirty();
             GetAssets(ty).AddTo(category, asset);
+            OnDirty();
         }
 
         void CreateDefaultJsonObject() override {
@@ -480,86 +478,42 @@ namespace CM_Editor {
             UI::EndDisabled();
 
             assets.Draw();
-
-
-            // UI::BeginChild(assetType + "Assets");
-            // UI::BeginTable(assetType + "Assets", 2, UI::TableFlags::SizingStretchProp);
-            // UI::TableSetupColumn("Asset", UI::TableColumnFlags::WidthStretch);
-            // UI::TableSetupColumn("Actions", UI::TableColumnFlags::WidthFixed);
-            // // UI::TableHeadersRow();
-            // auto @assets = getRoAssets(ty);
-            // int remIx = -1;
-            // for (uint i = 0; i < assets.Length; i++) {
-            //     UI::PushID(assetType + i);
-            //     UI::TableNextRow();
-            //     auto asset = string(assets[i]);
-            //     UI::TableNextColumn();
-            //     UI::AlignTextToFramePadding();
-            //     UI::Text(asset);
-            //     UI::SameLine();
-            //     if (UI::Button(Icons::Download + " Test")) {
-            //         try {
-            //             OpenBrowserURL(urlPrefix + asset);
-            //         } catch {
-            //             NotifyWarning("Invalid URL: " + urlPrefix + asset);
-            //         }
-            //     }
-            //     AddSimpleTooltip("Full URL: " + urlPrefix + asset);
-
-            //     UI::TableNextColumn();
-            //     if (UI::Button(Icons::TrashO + " Delete")) {
-            //         remIx = i;
-            //     }
-            //     UI::PopID();
-            // }
-            // UI::EndTable();
-            // UI::EndChild();
-
-            // if (remIx != -1) {
-            //     getRwAssets(ty).Remove(remIx);
-            //     SaveToFile();
-            // }
         }
 
-        void AddAssetsFromInput(AssetTy ty, const string &in input) {
-            auto @assets = getRwAssets(ty);
-            auto assetList = input.Split(",");
-            int nbAdded = 0;
-            for (uint i = 0; i < assetList.Length; i++) {
-                string asset = assetList[i].Trim();
-                if (asset.Length == 0) continue;
-                if (HasAsset(ty, asset)) {
-                    NotifyWarning("Asset already exists: " + asset);
-                    continue;
-                }
-                assets.Add(asset);
-                trace("Added asset: " + asset);
-                nbAdded++;
-            }
-            SaveToFile();
-            Notify("Added " + nbAdded + " assets.");
-        }
+        // void AddAssetsFromInput(AssetTy ty, const string &in input) {
+        //     auto @assets = getRwAssets(ty);
+        //     auto assetList = input.Split(",");
+        //     int nbAdded = 0;
+        //     for (uint i = 0; i < assetList.Length; i++) {
+        //         string asset = assetList[i].Trim();
+        //         if (asset.Length == 0) continue;
+        //         if (HasAsset(ty, asset)) {
+        //             NotifyWarning("Asset already exists: " + asset);
+        //             continue;
+        //         }
+        //         assets.Add(asset);
+        //         trace("Added asset: " + asset);
+        //         nbAdded++;
+        //     }
+        //     SaveToFile();
+        //     Notify("Added " + nbAdded + " assets.");
+        // }
 
         bool DidUrlCheckerPass(AssetTy ty) {
             auto urlChecker = GetUrlChecker(ty);
             if (urlChecker.isStale) return false;
             if (urlChecker.isRunning) return false;
-            return urlChecker.Passes(getRoAssets(ty).Length);
+            auto assets = GetAssets(ty);
+            return urlChecker.Passes(assets.Count());
         }
 
         void StartCheckUrls(AssetTy ty, const string &in urlPrefix) {
             auto urlChecker = GetUrlChecker(ty);
             if (urlChecker.isRunning) return;
             urlChecker.Reset();
-            auto assets = getRoAssets(ty);
-            for (uint i = 0; i < assets.Length; i++) {
-                if (assets[i].GetType() != Json::Type::String) {
-                    warn("Invalid asset type: " + tostring(assets[i].GetType()));
-                    continue;
-                }
-                string asset = string(assets[i]);
-                string url = urlPrefix + asset;
-                urlChecker.AddUrlCheck(url);
+            auto assets = GetAssets(ty);
+            for (uint i = 0; i < assets.categories.Length; i++) {
+                assets.AddAllAssetUrlsToChecker(urlPrefix, urlChecker);
             }
             urlChecker.StartRun();
         }
