@@ -5,7 +5,7 @@ namespace CM_Editor {
         Info,
         Floors,
         VoiceLines,
-        Triggers,
+        TextTriggers,
         Assets,
         Collectables,
         Minigames,
@@ -20,7 +20,7 @@ namespace CM_Editor {
             case EProjectComponent::MapInfo: return "Map Info";
             case EProjectComponent::Floors: return "Floors";
             case EProjectComponent::VoiceLines: return "Voice Lines";
-            case EProjectComponent::Triggers: return "Triggers";
+            case EProjectComponent::TextTriggers: return "Text Triggers";
             case EProjectComponent::Assets: return "Assets";
             case EProjectComponent::Collectables: return "Collectables";
             case EProjectComponent::Minigames: return "Minigames";

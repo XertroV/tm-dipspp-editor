@@ -39,7 +39,7 @@ namespace CM_Editor {
             super(jsonPath, meta);
             name = "Text Triggers";
             icon = Icons::Comment;
-            type = EProjectComponent::Triggers;
+            type = EProjectComponent::TextTriggers;
             thisTabClickRequiresTestPlaceMode = true;
         }
 
