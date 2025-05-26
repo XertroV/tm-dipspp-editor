@@ -215,18 +215,13 @@ namespace CM_Editor {
             type = MinigameType(int(json.Get("type", 0)));
             // Detect type and instantiate correct params subclass
             auto paramsJson = json["params"];
-            if (type == MinigameType::TimeTrial) @params = TimeTrialMinigameParams(paramsJson);
-            else @params = MinigameParams(paramsJson);
+            @params = MinigameParams(paramsJson);
         }
 
         Minigame(const string &in _name, MinigameType _type) {
             name = _name;
             type = _type;
-            if (type == MinigameType::TimeTrial) {
-                @params = TimeTrialMinigameParams();
-            } else {
-                @params = MinigameParams();
-            }
+            @params = MinigameParams();
         }
         Json::Value@ ToJson() {
             auto j = Json::Object();
@@ -252,9 +247,11 @@ namespace CM_Editor {
     class TimeTrialMinigame : Minigame {
         TimeTrialMinigame(Json::Value@ json) {
             super(json);
+            @params = TimeTrialMinigameParams(json["params"]);
         }
         TimeTrialMinigame(const string &in _name) {
             super(_name, MinigameType::TimeTrial);
+            @params = TimeTrialMinigameParams();
         }
         void DrawEditor() override {
             UI::Text("Name: " + name);
