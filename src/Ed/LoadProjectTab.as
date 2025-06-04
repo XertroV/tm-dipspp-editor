@@ -109,7 +109,7 @@ namespace CM_Editor {
         string selectedProject = "";
         void DrawProjectSelectables() {
             if (projects.Length == 0) {
-                UI::Text("No projects found.");
+                UI::TextWrapped("\\$i --\nNo projects found. Please create one.\n --");
                 return;
             }
             for (uint i = 0; i < projects.Length; i++) {
