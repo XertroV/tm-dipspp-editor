@@ -73,9 +73,11 @@ namespace CM_Editor {
             grp2.AddComponent(ProjectVoiceLinesComponent(PROJ_FILE_VOICELINES, meta));
             grp2.AddComponent(ProjectAssetsComponent(PROJ_FILE_ASSETS, meta));
             grp2.AddComponent(TextTriggersComponent(PROJ_FILE_TRIGGERS, meta));
+#if DEV
             grp2.AddComponent(ProjectMinigamesComponent(PROJ_FILE_MINIGAMES, meta));
             // grp2.AddComponent(ProjectTriggersComponent());
             // grp2.AddComponent(ProjectCollectablesComponent());
+#endif
         }
 
         ProjectComponentGroup@ AddComponentGroup(const string &in name) {

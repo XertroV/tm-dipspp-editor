@@ -86,4 +86,15 @@ namespace UX {
     bool Toggler(const string &in id, bool state) {
         return UI::Button((state ? Icons::ToggleOn : Icons::ToggleOff) + "##" + id);
     }
+
+    void CopyableText(const string &in msg) {
+        UI::Text(msg);
+        if (UI::IsItemClicked()) {
+            IO::SetClipboard(msg);
+            Notify("Copied to clipboard: " + msg);
+        }
+        if (UI::IsItemHovered()) {
+            UI::SetMouseCursor(UI::MouseCursor::Hand);
+        }
+    }
 }

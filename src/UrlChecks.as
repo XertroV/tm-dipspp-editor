@@ -15,6 +15,12 @@ namespace UrlCache {
         }
         return false;
     }
+
+    void ClearAll() {
+        auto nb = cache.GetSize();
+        cache.DeleteAll();
+        Notify("Cleared " + nb + " entries from known good URL cache.");
+    }
 }
 
 class UrlChecks {

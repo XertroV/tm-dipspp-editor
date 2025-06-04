@@ -452,8 +452,10 @@ namespace CM_Editor {
             UI::AlignTextToFramePadding();
             UI::Text("Tested URLs: " + BoolIcon(DidUrlCheckerPass(ty)));
             UI::SameLine();
-            UI::BeginDisabled(!urlChecker.IsStaleAndReady());
+            UI::BeginDisabled(urlChecker.isRunning);
             if (UI::Button(Icons::Check + " Check URLs")) StartCheckUrls(ty, urlPrefix);
+            UI::SameLine();
+            if (UI::Button(Icons::Refresh + " Clear Cached Good URLs")) UrlCache::ClearAll();
             UI::EndDisabled();
             if (!urlChecker.isStale) {
                 UI::SameLine();
@@ -463,6 +465,16 @@ namespace CM_Editor {
             if (urlChecker.isRunning) {
                 urlChecker.DrawProgressBars();
                 return;
+            }
+
+            if (urlChecker.FailedUrls.Length > 0) {
+                if (UI::CollapsingHeader("Failed URLs")) {
+                    UI::BeginChild("FailedUrls", vec2(0, 200), true);
+                    for (uint i = 0; i < urlChecker.FailedUrls.Length; i++) {
+                        UX::CopyableText(Text::Format("%3d. ", i + 1) + urlChecker.FailedUrls[i]);
+                    }
+                    UI::EndChild();
+                }
             }
 
             UI::Separator();
