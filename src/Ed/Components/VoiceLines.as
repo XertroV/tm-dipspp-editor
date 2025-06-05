@@ -275,6 +275,10 @@ namespace CM_Editor {
                 if (UI::Button(Icons::Crosshairs + " Show")) {
                     OnSetVoiceLineToDraw(vl);
                 }
+                UI::SameLine();
+                if (UI::Button(Icons::Play + " Test")) {
+                    StartTestVoiceLine(vl, urlPrefix);
+                }
 
                 UI::TableNextColumn();
                 if (UI::Button(Icons::Pencil + " Edit")) {
@@ -301,4 +305,17 @@ namespace CM_Editor {
         }
     }
 
+    void StartTestVoiceLine(VoiceLineEl@ vl, const string &in urlPrefix) {
+        if (vl is null || vl.file.Length == 0) {
+            NotifyWarning("No voice line selected or file name is empty.");
+            return;
+        }
+        string fullUrl = urlPrefix + vl.file;
+        if (!fullUrl.EndsWith(".mp3")) {
+            NotifyWarning("Voice line file must be an .mp3 file.");
+            return;
+        }
+        auto params = CustomVL::IVoiceLineParams(fullUrl, vl.subtitles, vl.imageAsset.Length > 0 ? urlPrefix + vl.imageAsset : "");
+        CustomVL::StartTestVoiceLine(params);
+    }
 }
