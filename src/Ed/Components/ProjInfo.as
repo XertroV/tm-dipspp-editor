@@ -167,7 +167,6 @@ namespace CM_Editor {
         }
 
         void DrawUrlCheckSection(ProjectTab@ pTab) {
-            UI::Separator();
             UI::AlignTextToFramePadding();
             UI::Text("All URLs: " + BoolIcon(DidAllUrlChecksPass()));
             UI::SameLine();
@@ -176,6 +175,12 @@ namespace CM_Editor {
             UI::SameLine();
             if (UI::Button(Icons::Refresh + " Clear Cached Good URLs")) UrlCache::ClearAll();
             UI::EndDisabled();
+            if (allUrlChecks.isRunning && allUrlChecks.isStale) {
+                UI::SameLine();
+                if (UI::ButtonColored(Icons::Stop + " Stop Checking", 0.08, .5, .5)) {
+                    allUrlChecks.StopRun();
+                }
+            }
             if (!allUrlChecks.isStale) {
                 UI::SameLine();
                 UI::Text(allUrlChecks.StatusText());
@@ -244,9 +249,9 @@ namespace CM_Editor {
             wTabIx_Prep = finalizationWizard.AddTab("Final Prep", CoroutineFunc(this.FinWiz_10_InitialPrep), Icons::ListOl);
             // - if yes -> go to Map Comment step
             // - otherwise -> go through all steps
-            // todo: set min version -- must be at least 0.5.5 to support the new custom map aux spec. set name_id too
+            // Adv1: set min version -- must be at least 0.5.5 to support the new custom map aux spec. set name_id too
             wTabIx_Adv1Conf = finalizationWizard.AddTab("Advanced 1", CoroutineFunc(this.FinWiz_20_Advanced1), Icons::Cog);
-            // todo: check asset URLs -- since assets are downloaded, all the URLs should work. (The user can move on if they know what they're doing).
+            // Adv2: check asset URLs -- since assets are downloaded, all the URLs should work. (The user can move on if they know what they're doing).
             wTabIx_Adv2Urls = finalizationWizard.AddTab("URL Checks", CoroutineFunc(this.FinWiz_30_CheckUrls), Icons::Link);
             // todo: additional steps?
 
@@ -259,7 +264,7 @@ namespace CM_Editor {
         void FinWiz_10_InitialPrep() {
             UI::AlignTextToFramePadding();
             UI::Text("Finalization: Preparation");
-            UI::Separator();
+            UI::SeparatorText("");
 
             UI::AlignTextToFramePadding();
             UI::TextWrapped("Choose how you want to finalize your map for Dips++:");
@@ -398,27 +403,30 @@ namespace CM_Editor {
         }
 
         void FinWiz_30_CheckUrls() {
+            UI::AlignTextToFramePadding();
             UI::Text("Finalization: URL Checks");
-            UI::Separator();
+            UI::SeparatorText("");
 
-            bool checksPass = !allUrlChecks.isStale && allUrlChecks.Passes(allUrlChecks.nbTotal);
+            bool checksPass = !allUrlChecks.isStale
+                && !allUrlChecks.isRunning
+                && allUrlChecks.Passes(allUrlChecks.nbTotal);
 
             DrawUrlCheckSection(pTabForWiz);
 
-
-            UI::Separator();
+            UI::SeparatorText("");
 
             m_AllowSkippingUrlChecks = UI::Checkbox("\\$f80" + Icons::ExclamationTriangle + " \\$z Allow skipping URL checks", m_AllowSkippingUrlChecks);
             AddSimpleTooltip("Do NOT check this if you don't know what you are doing. It can mean broken assets for users.");
 
             // if all URLs are good, allow to continue
-            if (!DidAllUrlChecksPass()) {
-                finalizationWizard.SetNextNavButtonDisabled(true);
+            if (!checksPass || !DidAllUrlChecksPass()) {
+                finalizationWizard.SetNextNavButtonDisabled(!m_AllowSkippingUrlChecks);
             }
         }
         bool m_AllowSkippingUrlChecks = false;
 
         void FinWiz_90_SetMapComment() {
+            UI::AlignTextToFramePadding();
             UI::Text("FinWiz_90_SetMapComment");
             // we have uploaded the json spec and have the URL for it.
             // now we need to set the map comment to final Dips Spec.
@@ -449,8 +457,10 @@ namespace CM_Editor {
         }
 
         void FinWiz_99_Done() {
+            UI::AlignTextToFramePadding();
             UI::TextWrapped("Congratulations! You have set everything up.");
             UI::PushFont(UI::Font::Default20);
+            UI::AlignTextToFramePadding();
             UI::Text("\\$8fcPlease save your map now!");
 
             UI::PopFont();

@@ -1,4 +1,3 @@
-
 namespace UrlCache {
     dictionary cache;
     bool IsKnownGood(const string &in url) {
@@ -40,7 +39,7 @@ class UrlChecks {
 
     bool Passes(uint nbChecks) {
         if (isStale) return false;
-        if (nbChecks != urlChecks.Length) {
+        if (!isRunning && nbChecks != urlChecks.Length) {
             isStale = true;
             return false;
         }
@@ -50,6 +49,11 @@ class UrlChecks {
     }
 
     void SetStale() {
+        if (isRunning) {
+            warn("SetStale while isRunning.");
+            PrintActiveContextStack();
+            StopRun();
+        }
         isStale = true;
     }
 
@@ -105,6 +109,8 @@ class UrlChecks {
             // check if we got invalidated
             if (isStale) {
                 warn("URL check invalidated, aborting.");
+                PrintActiveContextStack();
+                StopRun();
                 return;
             }
         }
@@ -158,6 +164,14 @@ class UrlChecks {
     string StatusText() {
         return "" + nbTotal + " / " + nbStarted + " // " + nbInProgress
              + " / \\$<\\$f44" + nbFailed + "\\$> / \\$4f8" + nbPassed;
+    }
+
+    void StopRun() {
+        if (isRunning) {
+            isStale = true;
+            isRunning = false;
+            // Optionally: clear progress, notify, or abort any async tasks
+        }
     }
 }
 
