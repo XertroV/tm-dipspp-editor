@@ -66,13 +66,13 @@ namespace CM_Editor {
 
             DrawAssetsEtcSection(pTab);
 
-            UI::PushFont(UI::Font::Default20);
-            UI::SeparatorText(" F I N A L I Z A T I O N ");
+            UI::PushFont(UI::Font::Default26);
+            UI::SeparatorText("\\$s F I N A L I Z A T I O N  &  U P L O A D ");
             UI::PopFont();
 
             DrawFinalizationWizard(pTab);
             return;
-
+            /*
             UI::SeparatorText("Finalize & Upload");
             //
 
@@ -106,7 +106,7 @@ namespace CM_Editor {
             // }
 
             // UI::Separator();
-
+            */
         }
 
         // TEMPORARY reference (we don't want to keep it around to avoid GC failing)
@@ -122,6 +122,8 @@ namespace CM_Editor {
         void DrawAssetsEtcSection(ProjectTab@ pTab) {
             UI::SeparatorText("Assets and Voice Lines");
 
+            UI::TextWrapped("\\$aaa\\$i Note: this is only required if you are going to upload a JSON spec (for voice lines and other advanced features).\n  Just set it to dashmap if you're not sure and want to be safe.");
+
             if (UI::CollapsingHeader("Base URL Help")) {
                 UI::TextWrapped("The Base URL is the root web address where all your project's assets (audio, images, etc.) and voice lines will be loaded from. This should be a stable, public HTTPS URL, ending with a slash ('/'). All asset file names you specify elsewhere will be appended to this base URL.\n\nFor example, if your Base URL is 'https://assets.xk.io/custom/blah/', and you set a voice line file to 'intro.mp3', the full URL will be 'https://assets.xk.io/custom/blah/intro.mp3'.\n\nIf you need hosting, contact XertroV or use the Dashmap option below.\n\nTip: Make sure your assets are uploaded to this location before finalizing your project.");
             }
@@ -136,22 +138,27 @@ namespace CM_Editor {
                 UI::TextLinkOpenURL("https://dashmap.live", "https://dashmap.live/");
             }
 
+            bool urlIsGood = false;
+            UI::AlignTextToFramePadding();
             if (newUP.Length == 0) {
                 UI::Text(BoolIcon(false) + " Base URL is empty!");
-                if (UI::Button("Use Dashmap?")) {
-                    newUP = "https://download.dashmap.live/" + LocalUserWSID() + "/";
-                    UrlPrefix = newUP;
-                }
-                UI::SameLine();
-                UI::Text("\\$i(Recommended)");
             } else if (!newUP.EndsWith("/")) {
                 UI::Text(BoolIcon(false) + " Base URL must end with a slash ('/')");
             } else if (!newUP.StartsWith("https://")) {
                 UI::Text(BoolIcon(false) + " Base URL must start with 'https://'");
             } else {
-                // UI::SeparatorText("\\$i\\$afc  · • —– ٠ Check VLs & Assets ٠ –— • ·  ");
                 UI::TextWrapped("Base URL looks good! " + BoolIcon(true));
-                // DrawUrlCheckSection(pTab);
+                urlIsGood = true;
+            }
+
+            if (!urlIsGood) {
+                UI::SameLine();
+                if (UI::ButtonColored("Use Dashmap?", 0.85, 0.5, 0.4)) {
+                    newUP = "https://download.dashmap.live/" + LocalUserWSID() + "/";
+                    UrlPrefix = newUP;
+                }
+                UI::SameLine();
+                UI::Text("\\$i(Recommended)");
             }
 
         }
