@@ -520,12 +520,18 @@ namespace CM_Editor {
         }
 
         void SaveToFile() override {
+            rw_data = ToJson();
+            ProjectComponent::SaveToFile();
+        }
+
+        Json::Value@ ToJson() {
             Json::Value@ arr = Json::Array();
             for (uint i = 0; i < minigames.Length; i++) {
                 arr.Add(minigames[i].ToJson());
             }
-            rw_data["games"] = arr;
-            ProjectComponent::SaveToFile();
+            auto j = Json::Object();
+            j["games"] = arr;
+            return j;
         }
 
         void DrawComponentInner(ProjectTab@ pTab) override {

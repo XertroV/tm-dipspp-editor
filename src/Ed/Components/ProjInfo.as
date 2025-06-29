@@ -46,6 +46,7 @@ namespace CM_Editor {
         void OnDirty() override {
             ProjectComponent::OnDirty();
             SetUrlChecksStale();
+            _wiz_generatedDipsSpec = "";
         }
 
         void SetUrlChecksStale() {
@@ -65,7 +66,9 @@ namespace CM_Editor {
 
             DrawAssetsEtcSection(pTab);
 
+            UI::PushFont(UI::Font::Default20);
             UI::SeparatorText(" F I N A L I Z A T I O N ");
+            UI::PopFont();
 
             DrawFinalizationWizard(pTab);
             return;
@@ -242,7 +245,8 @@ namespace CM_Editor {
         }
 
 
-        uint wTabIx_Prep, wTabIx_MapComment, wTabIx_Done, wTabIx_Adv1Conf, wTabIx_Adv2Urls;
+        uint wTabIx_Prep, wTabIx_MapComment, wTabIx_Done, wTabIx_Adv1Conf, wTabIx_Adv2Url,
+            wTabIx_PreUpload, wTabIx_ConfirmUpload;
 
         protected void SetUpWizardTabs() {
             if (finalizationWizard.nbTabs > 0) return; // already set up
@@ -252,8 +256,10 @@ namespace CM_Editor {
             // Adv1: set min version -- must be at least 0.5.5 to support the new custom map aux spec. set name_id too
             wTabIx_Adv1Conf = finalizationWizard.AddTab("Advanced 1", CoroutineFunc(this.FinWiz_20_Advanced1), Icons::Cog);
             // Adv2: check asset URLs -- since assets are downloaded, all the URLs should work. (The user can move on if they know what they're doing).
-            wTabIx_Adv2Urls = finalizationWizard.AddTab("URL Checks", CoroutineFunc(this.FinWiz_30_CheckUrls), Icons::Link);
-            // todo: additional steps?
+            wTabIx_Adv2Url = finalizationWizard.AddTab("URL Checks", CoroutineFunc(this.FinWiz_30_CheckUrls), Icons::Link);
+            wTabIx_PreUpload = finalizationWizard.AddTab("Upload JSON", CoroutineFunc(this.FinWiz_40_PreUpload), Icons::Upload);
+            wTabIx_ConfirmUpload = finalizationWizard.AddTab("Confirm Upload", CoroutineFunc(this.FinWiz_50_ConfirmUpload), Icons::CloudUpload);
+
 
             // penultimate step
             wTabIx_MapComment = finalizationWizard.AddTab("Map Comment", CoroutineFunc(this.FinWiz_90_SetMapComment), Icons::Comment);
@@ -262,6 +268,10 @@ namespace CM_Editor {
         }
 
         void FinWiz_10_InitialPrep() {
+            _wiz_generatedDipsSpec = ""; // on any tab before map comment tab, we reset this
+            @_wiz_generatedJsonObject = null;
+            _wiz_generatedJsonString = "";
+
             UI::AlignTextToFramePadding();
             UI::Text("Finalization: Preparation");
             UI::SeparatorText("");
@@ -276,13 +286,17 @@ namespace CM_Editor {
             // Choice buttons
             if (UI::ButtonColored("Use Simple Workflow (Map Comment Only)", 0.4, .5, .4)) {
                 finalizationWizard.JumpToTab(wTabIx_MapComment);
-                return;
+                SaveAllProjectTabs();
             }
             UI::SameLine();
             if (UI::ButtonColored("Use Advanced Workflow (JSON Upload)", 0.80)) {
                 finalizationWizard.ResetToOrPushTab(finalizationWizard.currentTab + 1); // go to next step
+                SaveAllProjectTabs();
             }
             finalizationWizard.SkipNextBackFwdButtons();
+
+            // invalidate json url
+            if (px_url.Length > 0) px_url = ""; // reset URL if choosing workflow
 
             UI::SeparatorText("Review Floors");
 
@@ -331,11 +345,17 @@ namespace CM_Editor {
             } else {
                 UI::Text(BoolIcon(false) + " No floors found.");
             }
+        }
 
-
+        void SaveAllProjectTabs() {
+            pTabForWiz.SaveAll();
         }
 
         void FinWiz_20_Advanced1() {
+            _wiz_generatedDipsSpec = "";
+            @_wiz_generatedJsonObject = null;
+            _wiz_generatedJsonString = "";
+
             UI::Text("Finalization: Confirm Advanced Config");
             UI::SeparatorText("");
             UI::AlignTextToFramePadding();
@@ -380,7 +400,7 @@ namespace CM_Editor {
             bool changedNameId = false;
             string newNameId = UI::InputText("Name ID (descriptive, no spaces)", nameId, changedNameId);
             AddSimpleTooltip("This is a unique identifier for your map. It should be short, lowercase, and contain only a-z, 0-9, -, and _. Example: 'my-first_custom-map1'");
-            if (changedNameId) set_NameId(newNameId);
+            if (changedNameId) NameId = newNameId;
             bool nameRegexMatch = Regex::IsMatch(newNameId, "^[a-z0-9_-]+$");
             bool nameIdOk = nameRegexMatch && newNameId.Length > 0 && newNameId.Length < 32;
             // show error if bad
@@ -403,6 +423,10 @@ namespace CM_Editor {
         }
 
         void FinWiz_30_CheckUrls() {
+            _wiz_generatedDipsSpec = "";
+            @_wiz_generatedJsonObject = null;
+            _wiz_generatedJsonString = "";
+
             UI::AlignTextToFramePadding();
             UI::Text("Finalization: URL Checks");
             UI::SeparatorText("");
@@ -425,8 +449,117 @@ namespace CM_Editor {
         }
         bool m_AllowSkippingUrlChecks = false;
 
+        private Json::Value@ _wiz_generatedJsonObject = null;
+        private string _wiz_generatedJsonString = "";
+
+        void FinWiz_40_PreUpload() {
+            UI::Text("Finalization: Upload JSON");
+            UI::SeparatorText("");
+
+            if (_wiz_generatedJsonObject is null) {
+                @_wiz_generatedJsonObject = pTabForWiz.ToCombinedJson();
+                _wiz_generatedJsonString = Json::Write(_wiz_generatedJsonObject, true);
+            }
+
+            UI::TextWrapped("The following JSON will be uploaded. You can inspect it here before uploading.");
+            if (UI::Button(Icons::FilesO + " Copy to Clipboard")) {
+                IO::SetClipboard(_wiz_generatedJsonString);
+                Notify("Copied JSON to clipboard!");
+            }
+            UI::SameLine();
+            if (UI::Button(Icons::Refresh + " Regenerate")) {
+                @_wiz_generatedJsonObject = null;
+                _wiz_generatedJsonString = "";
+            }
+
+            UI::InputTextMultiline("##json", _wiz_generatedJsonString, false, vec2(-1, 200), UI::InputTextFlags::ReadOnly);
+
+            UI::SeparatorText("Upload");
+            UI::AlignTextToFramePadding();
+            UI::TextWrapped("Click the button below to upload the JSON to the Dips++ server. This will give you the URL to use in the next step.");
+            UI::AlignTextToFramePadding();
+            UI::TextWrapped("\\$ddd\\$iNote: you can update or delete this JSON (with this Name ID) for 24 hours after uploading it, but it becomes locked after that. You can always upload a new JSON with a different Name ID if you need to change it later.");
+
+            UI::Dummy(vec2(0, 4));
+
+            // Placeholder for your upload logic
+            if (!_isUploadingJson && UI::Button("Upload JSON")) {
+                // todo: check this is sufficient and captures everything we need
+                startnew(CoroutineFunc(UploadJsonToDppServer));
+            } else if (_isUploadingJson) {
+                UI::Text("Uploading JSON to Dips++ server... " + UploadingJsonDuration() + " ms");
+            }
+
+            finalizationWizard.SetNextNavButtonDisabled(true);
+        }
+
+        bool _isUploadingJson = false;
+        int64 _uploadStartTime = 0;
+        void UploadJsonToDppServer() {
+            auto @j = _wiz_generatedJsonObject;
+            if (j is null) {
+                NotifyError("No JSON to upload!");
+                return;
+            }
+            string name_id = NameId;
+            if (name_id.Length == 0) {
+                NotifyError("Name ID is empty! Please set it in the Advanced 1 step.");
+                return;
+            }
+            _isUploadingJson = true;
+            _uploadStartTime = Time::Now;
+            Notify("Uploading JSON to Dips++ server...");
+            auto w = MyAuxSpecs::Report_Async(name_id, j);
+            if (!w.IsSuccess()) {
+                NotifyError("Failed to upload JSON: " + w.GetError());
+                _ResetUploadState();
+                return;
+            }
+            string uploaded_url = "https://dips-plus-plus.xk.io/aux_spec/" + LocalUserWSID() + "/" + name_id + ".json";
+            px_url = uploaded_url; // set the URL in the project info
+            NotifySuccess("JSON uploaded successfully! URL: " + uploaded_url);
+            _ResetUploadState();
+            // Move to the next step
+            finalizationWizard.ResetToOrPushTab(wTabIx_ConfirmUpload);
+        }
+
+        void _ResetUploadState() {
+            _isUploadingJson = false;
+            _uploadStartTime = 0;
+        }
+
+        int64 UploadingJsonDuration() {
+            if (_uploadStartTime == 0) return 0;
+            return Time::Now - _uploadStartTime;
+        }
+
+        void FinWiz_50_ConfirmUpload() {
+            UI::Text("Finalization: Confirm Upload");
+            UI::SeparatorText("");
+
+            UI::TextWrapped("Your JSON has been uploaded. Please copy the URL below and paste it into the field.");
+
+            auto url = px_url;
+            UI::PushFont(UI::Font::DefaultMono);
+            UI::AlignTextToFramePadding();
+            UI::Text("JSON URL: ");
+
+            UI::AlignTextToFramePadding();
+            UI::Text(url);
+            UI::PopFont();
+
+            if (UI::Button(Icons::InternetExplorer + " Open in Browser")) {
+                OpenBrowserURL(url);
+            }
+
+            if (url.Length > 0) {
+                DrawValidationMsgsJsonUrl(px_url);
+            }
+        }
+
         // --- UI state for map comment wizard step ---
-        private string _wiz_generatedDipsSpec = "( not yet generated )";
+        // We should reset _wiz_generatedDipsSpec to "" on any tab before the map comment tab
+        private string _wiz_generatedDipsSpec = "";
         private string _wiz_editableMapComment = "";
         private string _wiz_lastMapHash = "-";
 
@@ -442,7 +575,7 @@ namespace CM_Editor {
                 _wiz_lastMapHash = Crypto::MD5(_wiz_editableMapComment);
             }
 
-            if (UI::Button("Regenerate Dips Spec")) {
+            if (UI::Button("Regenerate Dips Spec") || _wiz_generatedDipsSpec.Length == 0) {
                 auto spec = DipsSpec(pTabForWiz);
                 _wiz_generatedDipsSpec = spec.GenerateComment();
             }
@@ -481,7 +614,7 @@ namespace CM_Editor {
             if (!commentsMatch) {
                 UI::Text(BoolIcon(false) + " Map comment does not match generated Dips Spec.");
                 UI::SameLine();
-                if (UI::Button("Copy Generated to Editor")) {
+                if (UI::Button("Copy Generated to Map Comment")) {
                     _wiz_editableMapComment = _wiz_generatedDipsSpec;
                     map.Comments = _wiz_generatedDipsSpec;
                     _wiz_lastMapHash = Crypto::MD5(_wiz_editableMapComment);

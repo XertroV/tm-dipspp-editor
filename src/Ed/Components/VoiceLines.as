@@ -140,14 +140,19 @@ namespace CM_Editor {
         }
 
         void SaveToFile() override {
-            // Serialize m_voiceLines to json
+            rw_data = ToJson();
+            ProjectComponent::SaveToFile();
+            editingVL = -1;
+        }
+
+        Json::Value@ ToJson() {
             auto arr = Json::Array();
             for (uint i = 0; i < m_voiceLines.Length; i++) {
                 arr.Add(m_voiceLines[i].ToJson());
             }
-            rw_data["lines"] = arr;
-            ProjectComponent::SaveToFile();
-            editingVL = -1;
+            auto j = Json::Object();
+            j["lines"] = arr;
+            return j;
         }
 
         void DrawComponentInner(ProjectTab@ pTab) override {

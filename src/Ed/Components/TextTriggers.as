@@ -68,13 +68,19 @@ namespace CM_Editor {
         }
 
         void SaveToFile() override {
+            rw_data = ToJson();
+            ProjectComponent::SaveToFile();
+            editingIx = -1;
+        }
+
+        Json::Value@ ToJson() {
             auto arr = Json::Array();
             for (uint i = 0; i < m_triggers.Length; i++) {
                 arr.Add(m_triggers[i].ToJson());
             }
-            rw_data["triggers"] = arr;
-            ProjectComponent::SaveToFile();
-            editingIx = -1;
+            auto j = Json::Object();
+            j["triggers"] = arr;
+            return j;
         }
 
         int PushTrigger(TextTrigger@ t) {

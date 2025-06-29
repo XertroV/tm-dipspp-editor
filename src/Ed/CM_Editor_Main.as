@@ -239,9 +239,69 @@ class DipsSpec {
     bool lastFloorEnd;
     FloorSpec[] floors;
     float start = -1.0, finish = -1.0;
+    bool useStart = false, useFinish = false;
 
-    DipsSpec(const string &in comment) {
-        warn("DipsSpec stub: parsing from comment is not implemented yet.");
+    DipsSpec(const string &in mapComment) {
+        auto parts = mapComment.Split(BEGIN_DPP_COMMENT);
+        if (parts.Length < 2) {
+            warn("DipsSpec: Could not find BEGIN_DPP_COMMENT");
+            return;
+        }
+        auto content = parts[1].Split(END_DPP_COMMENT)[0];
+        ParseCommentInner(content);
+    }
+
+    void ParseCommentInner(const string &in content) {
+        auto lines = content.Split("\n");
+        for (uint i = 0; i < lines.Length; i++) {
+            auto line = lines[i].Trim();
+            if (line.Length == 0 || line.StartsWith("#") || line.StartsWith("--") || line.StartsWith("//")) {
+                continue;
+            }
+            auto parts = line.Split("=", 2);
+            if (parts.Length < 2) {
+                warn("DipsSpec: Invalid line (missing '='): " + line);
+                continue;
+            }
+            SetKv(parts[0].Trim(), parts[1].Trim());
+        }
+    }
+
+    void SetKv(const string &in key, const string &in value) {
+        if (key == "url") url = value;
+        else if (key == "start") start = Text::ParseFloat(value);
+        else if (key == "finish") finish = Text::ParseFloat(value);
+        else if (key == "lastFloorEnd") lastFloorEnd = value.ToLower() == "true";
+        else if (key == "minClientVersion") minClientVersion = value;
+        else if (key.StartsWith("floor")) {
+            int floorIx = ParseFloorNum(key);
+            if (floorIx < 0) return;
+            while (floorIx >= int(floors.Length)) {
+                floors.InsertLast(FloorSpec());
+            }
+            floors[floorIx] = ParseFloorVal(value);
+        }
+    }
+
+    // key = floorXX
+    int ParseFloorNum(const string &in key) {
+        auto parts = key.Split("floor", 2);
+        if (parts.Length < 2) {
+            return -1;
+        }
+        try {
+            return Text::ParseInt(parts[1]);
+        } catch {
+            throw("Failed to parse floor number from string: " + key + " / raw exception: " + getExceptionInfo());
+        }
+        return -1;
+    }
+
+    FloorSpec ParseFloorVal(const string &in value) {
+        auto parts = value.Split("|");
+        float fHeight = Text::ParseFloat(parts[0].Trim());
+        string fLabel = parts.Length < 2 ? "" : parts[1].Trim();
+        return FloorSpec(fHeight, fLabel);
     }
 
     DipsSpec() {}
@@ -253,29 +313,48 @@ class DipsSpec {
 
         auto floorsComp = projTab.GetFloorsComponent();
         if (floorsComp !is null) {
+            floorsComp.sortFloors();
             this.lastFloorEnd = floorsComp.px_lastFloorEnd;
             for (uint i = 0; i < floorsComp.nbFloors; i++) {
                 auto floorEl = floorsComp.getFloor(i);
                 this.floors.InsertLast(FloorSpec(floorEl));
+            }
+
+            this.useStart = floorsComp.px_useStart;
+            if (useStart) {
+                this.start = floorsComp.px_start;
+            }
+
+            this.useFinish = floorsComp.px_useFinish;
+            if (useFinish) {
+                this.finish = floorsComp.px_finish;
             }
         }
     }
 
     string GenerateComment() {
         string comment = BEGIN_DPP_COMMENT + "\n";
-        if (minClientVersion.Length > 0 && minClientVersion != "0.0.0") {
-            comment += "minClientVersion=" + minClientVersion + "\n";
-        }
         if (url.Length > 0) {
             comment += "url=" + url + "\n";
+        }
+        if (useStart) {
+            comment += "start=" + start + "\n";
+        }
+        if (useFinish) {
+            comment += "finish=" + finish + "\n";
+        }
+        for (uint i = 0; i < floors.Length; i++) {
+            comment += "floor" + Text::Format("%02d", i) + "=" + floors[i].height;
+            if (floors[i].name.Length > 0) {
+                comment += "|" + floors[i].name;
+            }
+            comment += "\n";
         }
         if (lastFloorEnd) {
             comment += "lastFloorEnd=true\n";
         }
-        for (uint i = 0; i < floors.Length; i++) {
-            comment += "floor" + i + "=" + floors[i].height;
-            if (floors[i].name.Length > 0) comment += "|" + floors[i].name;
-            comment += "\n";
+        if (minClientVersion.Length > 0 && minClientVersion != "0.0.0") {
+            comment += "minClientVersion=" + minClientVersion + "\n";
         }
         comment += END_DPP_COMMENT;
         return comment;
@@ -287,6 +366,11 @@ class FloorSpec {
     string name;
 
     FloorSpec() {}
+
+    FloorSpec(float height, const string &in name) {
+        this.height = height;
+        this.name = name;
+    }
 
     FloorSpec(CM_Editor::FloorEl@ floorEl) {
         this.height = floorEl.height;

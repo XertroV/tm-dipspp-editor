@@ -255,20 +255,20 @@ namespace CM_Editor {
             if (info !is null) root["info"] = info.ro_data;
             // Floors
             auto floors = GetFloorsComponent();
-            if (floors !is null) root["floors"] = floors.ro_data;
+            if (floors !is null) root["floors"] = floors.ToJson();
             // VoiceLines
             auto vls = GetVoiceLinesComponent();
-            if (vls !is null) root["voicelines"] = vls.ro_data;
+            if (vls !is null) root["voicelines"] = vls.ToJson();
             // TextTriggers
-            auto triggers = GetComponentByType(EProjectComponent::TextTriggers);
-            if (triggers !is null) root["triggers"] = triggers.ro_data;
+            auto triggers = GetTextTriggersComponent();
+            if (triggers !is null) root["triggers"] = triggers.ToJson();
             // Assets
             auto assets = GetAssetsComponent();
-            if (assets !is null) root["assets"] = assets.ro_data;
+            if (assets !is null) root["assets"] = assets.ToJson();
 
             // Minigames
-            auto minigames = GetComponentByType(EProjectComponent::Minigames);
-            if (minigames !is null) root["minigames"] = minigames.ro_data;
+            auto minigames = cast<ProjectMinigamesComponent>(GetComponentByType(EProjectComponent::Minigames));
+            if (minigames !is null) root["minigames"] = minigames.ToJson();
             // Collectables
             auto collectables = GetComponentByType(EProjectComponent::Collectables);
             if (collectables !is null) root["collectables"] = collectables.ro_data;

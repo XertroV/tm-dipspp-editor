@@ -103,10 +103,10 @@ namespace CM_Editor {
                 m_floors.LoadFromJson(ro_data["floors"]);
             }
             // Load start/finish and flags
-            _userStart = ro_data.Get("start", 0.0f);
-            _userFinish = ro_data.Get("finish", 0.0f);
-            _useUserStart = ro_data.Get("useStart", false);
-            _useUserFinish = ro_data.Get("useFinish", false);
+            JsonX::SafeGetFloat(ro_data, "start", _userStart);
+            JsonX::SafeGetFloat(ro_data, "finish", _userFinish);
+            JsonX::SafeGetBool(ro_data, "useStart", _useUserStart);
+            JsonX::SafeGetBool(ro_data, "useFinish", _useUserFinish);
         }
 
         void CreateJsonDataFromComment(DipsSpec@ spec) override {
@@ -131,13 +131,19 @@ namespace CM_Editor {
         }
 
         void SaveToFile() override {
-            rw_data["floors"] = m_floors.ToJson();
-            rw_data["lastFloorEnd"] = px_lastFloorEnd;
-            rw_data["start"] = _userStart;
-            rw_data["finish"] = _userFinish;
-            rw_data["useStart"] = _useUserStart;
-            rw_data["useFinish"] = _userFinish;
+            rw_data = ToJson();
             ProjectComponent::SaveToFile();
+        }
+
+        Json::Value@ ToJson() {
+            auto j = Json::Object();
+            j["floors"] = m_floors.ToJson();
+            j["lastFloorEnd"] = px_lastFloorEnd;
+            j["start"] = px_start;
+            j["finish"] = px_finish;
+            j["useStart"] = px_useStart;
+            j["useFinish"] = px_useFinish;
+            return j;
         }
 
         void DrawComponentInner(ProjectTab@ pTab) override {

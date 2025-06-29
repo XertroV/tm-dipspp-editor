@@ -354,9 +354,15 @@ namespace CM_Editor {
         }
 
         void SaveToFile() override {
-            rw_data[IMAGES_K] = images.ToJson();
-            rw_data[AUDIOS_K] = audios.ToJson();
+            rw_data = ToJson();
             ProjectComponent::SaveToFile();
+        }
+
+        Json::Value@ ToJson() {
+            auto j = Json::Object();
+            j[IMAGES_K] = images.ToJson();
+            j[AUDIOS_K] = audios.ToJson();
+            return j;
         }
 
         void OnDirty() override {
