@@ -99,7 +99,7 @@ namespace UX {
     }
 
     void BulletText(const string &in msg) {
-        UI::Text("\\$888•");
+        UI::Text("\\$aaa\\$s●");
         UI::SameLine();
         UI::TextWrapped(msg);
     }

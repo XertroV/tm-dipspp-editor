@@ -257,6 +257,7 @@ namespace CM_Editor {
         }
 
         void FinWiz_10_InitialPrep() {
+            UI::AlignTextToFramePadding();
             UI::Text("Finalization: Preparation");
             UI::Separator();
 
@@ -268,17 +269,17 @@ namespace CM_Editor {
 
             UI::SeparatorText("\\$i\\$afc  · • —– ٠ Choose Workflow ٠ –— • ·  ");
             // Choice buttons
-            if (UI::Button("Use Simple Workflow (Map Comment Only)")) {
+            if (UI::ButtonColored("Use Simple Workflow (Map Comment Only)", 0.4, .5, .4)) {
                 finalizationWizard.JumpToTab(wTabIx_MapComment);
                 return;
             }
             UI::SameLine();
-            if (UI::Button("Use Advanced Workflow (JSON Upload)")) {
+            if (UI::ButtonColored("Use Advanced Workflow (JSON Upload)", 0.80)) {
                 finalizationWizard.ResetToOrPushTab(finalizationWizard.currentTab + 1); // go to next step
             }
             finalizationWizard.SkipNextBackFwdButtons();
 
-            UI::Separator();
+            UI::SeparatorText("Review Floors");
 
             // Show summary of project floors
             auto fc = pTabForWiz.GetFloorsComponent();
@@ -286,13 +287,19 @@ namespace CM_Editor {
             if (fc !is null && fc.nbFloors > 0) {
                 UI::AlignTextToFramePadding();
                 auto avail = UI::GetContentRegionAvail();
-                uint cols = Math::Min(int(avail.x - 40) / 140, 5);
-                cols = Math::Max(cols, 1); // at least 1 column
+                uint colWidth = 160;
+                uint cols = Math::Min(int(avail.x) / colWidth, 5);
+                cols = cols < 1 ? 1 : cols; // at least 1 column
                 auto maxPerCol = fc.nbFloors / cols + 1;
                 uint max_rows = (fc.nbFloors + cols - 1) / cols; // ceil division
                 UI::Text("> Project Floors: " + fc.nbFloors + " total  \\$888\\$i  (over " + cols + " columns, with " + maxPerCol + " max per column, and " + max_rows + " rows)");
 
                 if (UI::BeginTable("floors", cols, UI::TableFlags::SizingFixedSame | UI::TableFlags::BordersV)) {
+                    // setup widths
+                    for (uint c = 0; c < cols; c++) {
+                        UI::TableSetupColumn("col" + c, UI::TableColumnFlags::WidthFixed, colWidth);
+                    }
+                    // rows
                     for (uint row = 0; row < max_rows; row++) {
                         // UI::TableNextRow();
                         for (uint col = 0; col < cols; col++) {
@@ -325,9 +332,43 @@ namespace CM_Editor {
 
         void FinWiz_20_Advanced1() {
             UI::Text("Finalization: Confirm Advanced Config");
-            UI::Separator();
-            UI::TextWrapped("To use advanced features, you must set a unique Name ID and set the minimum client version to at least 0.5.5.");
-            UI::Separator();
+            UI::SeparatorText("");
+            UI::AlignTextToFramePadding();
+            UI::TextWrapped("To use advanced features, you must:");
+            UX::BulletText("set the minimum client version to at least 0.5.5; and");
+            UX::BulletText("set a unique Name ID for the hosted json file.");
+
+            UI::Indent();
+            UI::AlignTextToFramePadding();
+            UI::TextWrapped("\\$888\\$iNote: Trying silly things with the name is a good way to get banned from Dips++.");
+            UI::Unindent();
+
+            UI::SeparatorText("");
+
+            // Min Client Version
+            string minClientVersion = get_px_minClientVersion();
+            bool changedMCV = false;
+            string newMCV = UI::InputText("Min Client Version (required: 0.5.5 or higher)", minClientVersion, changedMCV);
+            AddSimpleTooltip("Set this to at least 0.5.5 to enable advanced features and JSON upload.");
+            if (changedMCV) set_px_minClientVersion(newMCV);
+
+            UI::AlignTextToFramePadding();
+            bool mcvOk = false;
+            if (newMCV.Length > 0) {
+                mcvOk = MapCustomInfo::CheckMinClientVersion("0.5.5", newMCV);
+                if (!mcvOk) {
+                    UI::AlignTextToFramePadding();
+                    UI::Text(BoolIcon(false) + " Min Client Version must be at least 0.5.5");
+                    UI::SameLine();
+                    if (UI::Button("Set to 0.5.5")) {
+                        set_px_minClientVersion("0.5.5");
+                        newMCV = "0.5.5"; // update input
+                    }
+                }
+                else UI::Text(BoolIcon(true) + " Min Client Version looks good!");
+            }
+
+            UI::Dummy(vec2(0, 4));
 
             // Name ID
             string nameId = get_NameId();
@@ -348,24 +389,7 @@ namespace CM_Editor {
                     UI::Text(BoolIcon(false) + " Name ID must contain only a-z, 0-9, -, and _");
                 }
             } else {
-                UI::Text(BoolIcon(true) + " Name ID looks good!");
-            }
-
-            UI::Dummy(vec2(0, 10));
-
-            // Min Client Version
-            string minClientVersion = get_px_minClientVersion();
-            bool changedMCV = false;
-            string newMCV = UI::InputText("Min Client Version (required: 0.5.5 or higher)", minClientVersion, changedMCV);
-            AddSimpleTooltip("Set this to at least 0.5.5 to enable advanced features and JSON upload.");
-            if (changedMCV) set_px_minClientVersion(newMCV);
-
-            UI::AlignTextToFramePadding();
-            bool mcvOk = false;
-            if (newMCV.Length > 0) {
-                mcvOk = MapCustomInfo::CheckMinClientVersion(newMCV, "0.5.5");
-                if (!mcvOk) UI::Text(BoolIcon(false) + " Min Client Version must be at least 0.5.5");
-                else UI::Text(BoolIcon(true) + " Min Client Version looks good!");
+                UI::Text(BoolIcon(true) + " Name ID looks good! Filename will be: " + newNameId + ".json");
             }
 
             if (!mcvOk || !nameIdOk) {

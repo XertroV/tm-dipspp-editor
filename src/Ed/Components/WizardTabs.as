@@ -87,7 +87,7 @@ class WizardTabs {
             return; // Skip the next back/forward buttons
         }
 
-        UI::Separator();
+        UI::SeparatorText("");
 
         if (!IsFirstTab) {
             if (UI::Button(Icons::ArrowLeft + " Back")) {
