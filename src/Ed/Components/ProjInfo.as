@@ -360,7 +360,7 @@ namespace CM_Editor {
             UI::SeparatorText("");
             UI::AlignTextToFramePadding();
             UI::TextWrapped("To use advanced features, you must:");
-            UX::BulletText("set the minimum client version to at least 0.5.5; and");
+            UX::BulletText("set the minimum client version to at least "+MIN_PLUGIN_VERSION_AUX_SPEC+"; and");
             UX::BulletText("set a unique Name ID for the hosted json file.");
 
             UI::Indent();
@@ -373,21 +373,21 @@ namespace CM_Editor {
             // Min Client Version
             string minClientVersion = get_px_minClientVersion();
             bool changedMCV = false;
-            string newMCV = UI::InputText("Min Client Version (required: 0.5.5 or higher)", minClientVersion, changedMCV);
-            AddSimpleTooltip("Set this to at least 0.5.5 to enable advanced features and JSON upload.");
+            string newMCV = UI::InputText("Min Client Version (required: "+MIN_PLUGIN_VERSION_AUX_SPEC+" or higher)", minClientVersion, changedMCV);
+            AddSimpleTooltip("Set this to at least "+MIN_PLUGIN_VERSION_AUX_SPEC+" to enable advanced features and JSON upload.");
             if (changedMCV) set_px_minClientVersion(newMCV);
 
             UI::AlignTextToFramePadding();
             bool mcvOk = false;
             if (newMCV.Length > 0) {
-                mcvOk = MapCustomInfo::CheckMinClientVersion("0.5.5", newMCV);
+                mcvOk = MapCustomInfo::CheckMinClientVersion(MIN_PLUGIN_VERSION_AUX_SPEC, newMCV);
                 if (!mcvOk) {
                     UI::AlignTextToFramePadding();
-                    UI::Text(BoolIcon(false) + " Min Client Version must be at least 0.5.5");
+                    UI::Text(BoolIcon(false) + " Min Client Version must be at least " + MIN_PLUGIN_VERSION_AUX_SPEC);
                     UI::SameLine();
-                    if (UI::Button("Set to 0.5.5")) {
-                        set_px_minClientVersion("0.5.5");
-                        newMCV = "0.5.5"; // update input
+                    if (UI::Button("Set to " + MIN_PLUGIN_VERSION_AUX_SPEC)) {
+                        set_px_minClientVersion(MIN_PLUGIN_VERSION_AUX_SPEC);
+                        newMCV = MIN_PLUGIN_VERSION_AUX_SPEC; // update input
                     }
                 }
                 else UI::Text(BoolIcon(true) + " Min Client Version looks good!");
