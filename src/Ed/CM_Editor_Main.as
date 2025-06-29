@@ -38,7 +38,8 @@ namespace CM_Editor {
     void Render() {
         if (!S_EditorWindowOpen) return;
         UI::SetNextWindowSize(500, 370, UI::Cond::FirstUseEver);
-        if (UI::Begin("Dips++ CustomMap Editor", S_EditorWindowOpen)) {
+        if (UI::Begin("Dips++ CustomMap Editor", S_EditorWindowOpen, UI::WindowFlags::MenuBar | UI::WindowFlags::NoCollapse)) {
+            Draw_MainWindowMenuBar();
             Draw_CMEditor_WindowMain();
         }
         UI::End();
@@ -85,6 +86,46 @@ namespace CM_Editor {
         return tg;
     }
 
+
+    void Draw_MainWindowMenuBar() {
+        if (UI::BeginMenuBar()) {
+            if (UI::BeginMenu("File")) {
+                // if (UI::MenuItem("New Project")) {
+                //     CM_Editor_TG.AddTab(NewProjectTab(CM_Editor_TG));
+                // }
+                // if (UI::MenuItem("Load Project")) {
+                //     CM_Editor_TG.AddTab(LoadProjTab(CM_Editor_TG));
+                // }
+                // if (UI::MenuItem("Save Project")) {
+                //     CM_Editor_TG.SaveActiveComponent();
+                // }
+                if (UI::MenuItem("Save All")) {
+                    for (uint i = 0; i < CM_Editor_TG.tabs.Length; i++) {
+                        auto projTab = cast<ProjectTab>(CM_Editor_TG.tabs[i]);
+                        if (projTab is null) continue;
+                        projTab.SaveAll();
+                    }
+                }
+                UI::EndMenu();
+            }
+
+            if (UI::BeginMenu("Uploaded")) {
+                if (UI::MenuItem("View Uploaded Specs", "", S_Window_ViewUploadedSpecs)) {
+                    S_Window_ViewUploadedSpecs = !S_Window_ViewUploadedSpecs;
+                }
+                UI::EndMenu();
+            }
+
+            // if (UI::BeginMenu("Help")) {
+            //     if (UI::MenuItem("About Dips++ CustomMap Editor")) {
+            //         NotifyInfo("Dips++ CustomMap Editor v1.0");
+            //     }
+            //     UI::EndMenu();
+            // }
+
+            UI::EndMenuBar();
+        }
+    }
 
 }
 

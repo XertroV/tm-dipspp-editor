@@ -97,7 +97,7 @@ class UrlChecks {
         isStale = false;
         auto urls = urlQueue.GetKeys();
         urlQueue.DeleteAll();
-        Meta::PluginCoroutine@[]@ coros = {};
+        awaitable@[]@ coros = {};
         print("Starting URL checks: " + urls.Length);
         for (uint i = 0; i < urls.Length; i++) {
             coros.InsertLast(startnew(CoroutineFuncUserdataString(this.RunUrlHeadCheck), urls[i]));

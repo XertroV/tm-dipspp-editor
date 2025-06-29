@@ -176,9 +176,7 @@ namespace CM_Editor {
                 }
                 UI::SameLine();
                 if (UI::Button(Icons::FloppyO + " Save All")) {
-                    for (uint i = 0; i < componentGroups.Length; i++) {
-                        componentGroups[i].SaveAll();
-                    }
+                    this.SaveAll();
                 }
                 // the components
                 DrawProjComponentSelector();
@@ -215,6 +213,12 @@ namespace CM_Editor {
                 if (componentGroups[i].SaveActiveComponent(selectedComponent)) {
                     return;
                 }
+            }
+        }
+
+        void SaveAll() {
+            for (uint i = 0; i < componentGroups.Length; i++) {
+                componentGroups[i].SaveAll();
             }
         }
 

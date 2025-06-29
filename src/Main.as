@@ -11,6 +11,10 @@ void Render() {
     CM_Editor::Render();
 }
 
+void RenderInterface() {
+    RenderUploadedSpecsWindow();
+}
+
 void Main() {
     startnew(LoadFonts);
     CM_Editor::OnPluginLoad();
