@@ -249,6 +249,21 @@ namespace CM_Editor {
             // car is offset +0.5
             SetCreatingFloorHeight(icPos.y - 0.5);
         }
+
+        // return null if no floor exists for that position
+        // cols = number of columns in the table
+        // maxPerCol = maximum number of floors per column
+        // row = current row of table
+        // col = current column of table
+        // Note: we want to fill out columns first, then rows. (As though were were going top to bottom, left to right)
+        FloorEl@ GetFloorForTablePos(uint cols, uint maxPerCol, uint row, uint col, uint &out floorIx) {
+            floorIx = uint(-1);
+            if (col >= cols || row >= maxPerCol) return null;
+            uint ix = col * maxPerCol + row;
+            floorIx = ix;
+            if (ix >= m_floors.Length()) return null;
+            return m_floors.At(ix);
+        }
     }
 
 }

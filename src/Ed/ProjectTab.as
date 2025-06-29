@@ -101,9 +101,25 @@ namespace CM_Editor {
             return cast<ProjectAssetsComponent>(GetComponentByType(EProjectComponent::Assets));
         }
 
+        ProjectVoiceLinesComponent@ GetVoiceLinesComponent() {
+            return cast<ProjectVoiceLinesComponent>(GetComponentByType(EProjectComponent::VoiceLines));
+        }
+
         ProjectInfoComponent@ GetInfoComponent() {
             return cast<ProjectInfoComponent>(GetComponentByType(EProjectComponent::Info));
         }
+
+        TextTriggersComponent@ GetTextTriggersComponent() {
+            return cast<TextTriggersComponent>(GetComponentByType(EProjectComponent::TextTriggers));
+        }
+
+        // Note: has no internal json data
+        MapInfoComponent@ GetMapInfoComponent() {
+            return cast<MapInfoComponent>(GetComponentByType(EProjectComponent::MapInfo));
+        }
+
+
+
 
         string GetUrlPrefix() {
             return GetInfoComponent().UrlPrefix;
@@ -224,6 +240,40 @@ namespace CM_Editor {
 
         string AssetBrowser(const string &in label, const string &in value, AssetTy ty) {
             return GetAssetsComponent().Browser(label, value, ty);
+        }
+
+        Json::Value@ ToCombinedJson() {
+            // Save all components to ensure disk state is up to date
+            for (uint g = 0; g < componentGroups.Length; g++) {
+                componentGroups[g].SaveAll();
+            }
+
+            // Build combined JSON
+            auto root = Json::Object();
+            // Info
+            auto info = GetInfoComponent();
+            if (info !is null) root["info"] = info.ro_data;
+            // Floors
+            auto floors = GetFloorsComponent();
+            if (floors !is null) root["floors"] = floors.ro_data;
+            // VoiceLines
+            auto vls = GetVoiceLinesComponent();
+            if (vls !is null) root["voicelines"] = vls.ro_data;
+            // TextTriggers
+            auto triggers = GetComponentByType(EProjectComponent::TextTriggers);
+            if (triggers !is null) root["triggers"] = triggers.ro_data;
+            // Assets
+            auto assets = GetAssetsComponent();
+            if (assets !is null) root["assets"] = assets.ro_data;
+
+            // Minigames
+            auto minigames = GetComponentByType(EProjectComponent::Minigames);
+            if (minigames !is null) root["minigames"] = minigames.ro_data;
+            // Collectables
+            auto collectables = GetComponentByType(EProjectComponent::Collectables);
+            if (collectables !is null) root["collectables"] = collectables.ro_data;
+
+            return root;
         }
     }
 }

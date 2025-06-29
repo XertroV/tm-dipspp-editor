@@ -97,4 +97,10 @@ namespace UX {
             UI::SetMouseCursor(UI::MouseCursor::Hand);
         }
     }
+
+    void BulletText(const string &in msg) {
+        UI::Text("\\$888•");
+        UI::SameLine();
+        UI::TextWrapped(msg);
+    }
 }

@@ -167,9 +167,15 @@ bool RequestHead_Exists(const string &in url) {
     Net::HttpRequest@ req = RequestHead(url, true);
     while (!req.Finished()) yield();
     auto status = req.ResponseCode();
-    trace("Response code: " + status);
-    return (status - (status % 100)) == 200
-        && req.ResponseHeader("content-length").Length > 1 // no files less than 10 bytes
+    trace("Response code: " + status + " / content-length: " + req.ResponseHeader("content-length"));
+    // auto headers = req.ResponseHeaders();
+    // auto headers_ks = headers.GetKeys();
+    // trace("All headers: " + string::Join(headers_ks, ", "));
+    // trace("All headers: " + Json::Write(headers.ToJson()));
+    // trace("Response Body: " + req.String());
+    // huh, cloudflare stopped returning a content-length header for this request, but `curl --head https://download.dashmap.live/0a2d1bc0-4aaa-4374-b2db-3d561bdab1c9/nine.mp3` works fine
+    return (200 <= status && status <= 299)
+        // && req.ResponseHeader("content-length").Length > 1 // no files less than 10 bytes
     ;
 }
 
