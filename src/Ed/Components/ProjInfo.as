@@ -425,35 +425,91 @@ namespace CM_Editor {
         }
         bool m_AllowSkippingUrlChecks = false;
 
+        // --- UI state for map comment wizard step ---
+        private string _wiz_generatedDipsSpec = "( not yet generated )";
+        private string _wiz_editableMapComment = "";
+        private string _wiz_lastMapHash = "-";
+
         void FinWiz_90_SetMapComment() {
             UI::AlignTextToFramePadding();
-            UI::Text("FinWiz_90_SetMapComment");
-            // we have uploaded the json spec and have the URL for it.
-            // now we need to set the map comment to final Dips Spec.
-            // UI Idea: show two side-by-side text boxes: the generated dips spec and the current map comment.
-            // -> then the user can refresh the generation or update the map comment, and can inspect it.
-            string generatedDipsSpec = "";
-            auto map = GetApp().RootMap;
-            bool mapCommentSet = map.Comments.Contains(generatedDipsSpec);
+            UI::Text("Finalize: Set Map Comment");
 
-            if (UI::Button("Regenerate Dips Spec") || generatedDipsSpec.Length == 0) {
-                // todo: generate the Dips Spec from the project components
-                // generatedDipsSpec = todo!()
+            auto map = GetApp().RootMap;
+
+            // Keep editableMapComment in sync with map.Comments unless user edits
+            if (_wiz_editableMapComment.Length == 0 || _wiz_lastMapHash != Crypto::MD5(map.Comments)) {
+                _wiz_editableMapComment = map.Comments;
+                _wiz_lastMapHash = Crypto::MD5(_wiz_editableMapComment);
             }
-            UI::SameLine();
+
+            if (UI::Button("Regenerate Dips Spec")) {
+                auto spec = DipsSpec(pTabForWiz);
+                _wiz_generatedDipsSpec = spec.GenerateComment();
+            }
+
+            bool mapCommentSet = map.Comments == _wiz_generatedDipsSpec;
+
             if (UI::Button("Set Map Comment (Will Overwrite)")) {
-                map.Comments = generatedDipsSpec;
+                map.Comments = _wiz_generatedDipsSpec;
+                _wiz_editableMapComment = _wiz_generatedDipsSpec;
+                _wiz_lastMapHash = Crypto::MD5(_wiz_editableMapComment);
             }
             UI::SameLine();
             UI::Text("Map Comment Set: " + BoolIcon(mapCommentSet));
 
             UI::SeparatorText("");
-            // todo: LHS: generatedDipsSpec
-            // todo: RHS: map.Comments
-            // - use monospace, show line numbers, allow editing map comment
+            UI::Columns(2, "dips-mapcomment-cols");
+            // LHS: Generated Dips Spec (read-only)
+            UI::Text("Generated Dips Spec");
+            UI::BeginChild("dips-spec-child", vec2(0, 220), true);
+            DrawLineNumberedText(_wiz_generatedDipsSpec);
+            UI::EndChild();
+            UI::NextColumn();
+            // RHS: Editable Map Comment with line numbers
+            UI::Text("Current Map Comment (editable)");
+            bool changed = false;
+            _wiz_editableMapComment = DrawLineNumberedInput("##mapcomment", _wiz_editableMapComment, changed, vec2(-1, 220));
+            if (changed) {
+                map.Comments = _wiz_editableMapComment;
+                _wiz_lastMapHash = Crypto::MD5(_wiz_editableMapComment);
+            }
+            UI::Columns(1);
 
-            // if the map comment is not set, disable the next button but still show it.
-            if (!mapCommentSet) finalizationWizard.SetNextNavButtonDisabled();
+            // Show diff status
+            UI::AlignTextToFramePadding();
+            bool commentsMatch = _wiz_editableMapComment == _wiz_generatedDipsSpec;
+            if (!commentsMatch) {
+                UI::Text(BoolIcon(false) + " Map comment does not match generated Dips Spec.");
+                UI::SameLine();
+                if (UI::Button("Copy Generated to Editor")) {
+                    _wiz_editableMapComment = _wiz_generatedDipsSpec;
+                    map.Comments = _wiz_generatedDipsSpec;
+                    _wiz_lastMapHash = Crypto::MD5(_wiz_editableMapComment);
+                }
+            } else {
+                UI::Text(BoolIcon(true) + " Map comment matches generated Dips Spec.");
+            }
+
+            // Disable next if not matching
+            if (!commentsMatch) finalizationWizard.SetNextNavButtonDisabled();
+        }
+
+        // Helper: Draw line-numbered, monospace text (read-only)
+        void DrawLineNumberedText(const string &in text) {
+            UI::PushFont(UI::Font::DefaultMono);
+            auto lines = text.Split("\n");
+            for (uint i = 0; i < lines.Length; i++) {
+                UI::Text(Text::Format("%2d | ", i + 1) + lines[i]);
+            }
+            UI::PopFont();
+        }
+
+        // Helper: Draw line-numbered multiline input (editable)
+        string DrawLineNumberedInput(const string &in id, const string &in text, bool &out changed, vec2 size = vec2(-1, 180)) {
+            UI::PushFont(UI::Font::DefaultMono);
+            string newText = UI::InputTextMultiline(id, text, changed, size, UI::InputTextFlags::AllowTabInput);
+            UI::PopFont();
+            return newText;
         }
 
         void FinWiz_99_Done() {

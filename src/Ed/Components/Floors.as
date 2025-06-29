@@ -70,6 +70,22 @@ namespace CM_Editor {
             thisTabClickRequiresTestPlaceMode = true;
         }
 
+        // --- Start/Finish properties and user flags ---
+        private float _userStart = 0.0f;
+        private float _userFinish = 0.0f;
+        private bool _useUserStart = false;
+        private bool _useUserFinish = false;
+
+        // Proxy accessors for UI and serialization
+        float get_px_start() const { return _userStart; }
+        void set_px_start(float v) { rw_data["start"] = _userStart = v; }
+        float get_px_finish() const { return _userFinish; }
+        void set_px_finish(float v) { rw_data["finish"] = _userFinish = v; }
+        bool get_px_useStart() const { return _useUserStart; }
+        void set_px_useStart(bool v) { rw_data["useStart"] = _useUserStart = v; }
+        bool get_px_useFinish() const { return _useUserFinish; }
+        void set_px_useFinish(bool v) { rw_data["useFinish"] = _useUserFinish = v; }
+
         // proxy methods for data access (px = proxy)
         bool get_px_lastFloorEnd() const { return ro_data.Get("lastFloorEnd", false); }
         void set_px_lastFloorEnd(bool v) { rw_data["lastFloorEnd"] = v; }
@@ -86,6 +102,11 @@ namespace CM_Editor {
             if (ro_data.HasKey("floors")) {
                 m_floors.LoadFromJson(ro_data["floors"]);
             }
+            // Load start/finish and flags
+            _userStart = ro_data.Get("start", 0.0f);
+            _userFinish = ro_data.Get("finish", 0.0f);
+            _useUserStart = ro_data.Get("useStart", false);
+            _useUserFinish = ro_data.Get("useFinish", false);
         }
 
         void CreateJsonDataFromComment(DipsSpec@ spec) override {
@@ -94,18 +115,28 @@ namespace CM_Editor {
             for (uint i = 0; i < spec.floors.Length; i++) {
                 m_floors.Add(FloorEl(spec.floors[i].ToJson()));
             }
+            // Optionally set start/finish from spec if needed
         }
 
         void CreateDefaultJsonObject() override {
             auto j = Json::Object();
             j["floors"] = Json::Array();
             j["lastFloorEnd"] = false;
+            j["start"] = 0.0f;
+            j["finish"] = 0.0f;
+            j["useStart"] = false;
+            j["useFinish"] = false;
             rw_data = j;
             m_floors.Clear();
         }
 
         void SaveToFile() override {
             rw_data["floors"] = m_floors.ToJson();
+            rw_data["lastFloorEnd"] = px_lastFloorEnd;
+            rw_data["start"] = _userStart;
+            rw_data["finish"] = _userFinish;
+            rw_data["useStart"] = _useUserStart;
+            rw_data["useFinish"] = _userFinish;
             ProjectComponent::SaveToFile();
         }
 
@@ -116,7 +147,43 @@ namespace CM_Editor {
             if (UI::Button(Icons::Plus + " Add Floor")) {
                 OnCreateNewFloor();
             }
-            UI::Separator();
+
+            // --- Start/Finish UI ---
+            UI::SeparatorText("Start/Finish Heights");
+            UI::AlignTextToFramePadding();
+            UI::TextWrapped("It's safe to leave these unchecked. The start and finish heights will be autodetected in that case.\n"
+                            "Setting the finish is recommended if 16-32m of inaccuracy would bother you.");
+            bool changedStart = false, changedFinish = false, changedUseStart = false, changedUseFinish = false;
+            bool useStart = px_useStart;
+            bool useFinish = px_useFinish;
+            float startVal = px_start;
+            float finishVal = px_finish;
+
+            bool prevUseStart = useStart;
+            useStart = UI::Checkbox("Set custom Start height", useStart);
+            changedUseStart = (useStart != prevUseStart);
+            UI::SameLine();
+            UI::BeginDisabled(!useStart);
+            float prevStartVal = startVal;
+            startVal = UI::InputFloat("Start Height", startVal);
+            changedStart = (startVal != prevStartVal);
+            UI::EndDisabled();
+            if (changedUseStart) px_useStart = useStart;
+            if (changedStart) px_start = startVal;
+
+            bool prevUseFinish = useFinish;
+            useFinish = UI::Checkbox("Set custom Finish height", useFinish);
+            changedUseFinish = (useFinish != prevUseFinish);
+            UI::SameLine();
+            UI::BeginDisabled(!useFinish);
+            float prevFinishVal = finishVal;
+            finishVal = UI::InputFloat("Finish Height", finishVal);
+            changedFinish = (finishVal != prevFinishVal);
+            UI::EndDisabled();
+            if (changedUseFinish) px_useFinish = useFinish;
+            if (changedFinish) px_finish = finishVal;
+
+            UI::SeparatorText("Floors");
             if (IsCreatingFloor) {
                 DrawFloorCreation();
             } else {
@@ -143,11 +210,19 @@ namespace CM_Editor {
             if (UI::Button(Icons::Sort + " Sort")) {
                 sortFloors();
             }
+            UI::SameLine();
+            UI::Dummy(vec2(4, 0));
+            UI::SameLine();
+            auto _lastFloorEnd = px_lastFloorEnd;
+            _lastFloorEnd = UI::Checkbox("Last Floor Named 'End'", _lastFloorEnd);
+            AddSimpleTooltip("Note, setting a name for the last floor will override this.");
+            if (_lastFloorEnd != px_lastFloorEnd) px_lastFloorEnd = _lastFloorEnd;
 
             UI::TextWrapped("By default, floor names get cut off after 3-4 characters.\nLeave empty for default (the floor number).");
 
             int remIx = -1;
 
+            // leave this as thin separator
             UI::Separator();
 
             UI::BeginChild("fl");

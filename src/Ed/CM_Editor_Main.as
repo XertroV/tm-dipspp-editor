@@ -228,22 +228,71 @@ void nvgDrawWorldBox(vec3 pos, vec3 size, vec4 color, float strokeWidth = 2.0) {
 
 
 
-// MARK: Stub
+// MARK: DipsSpec
+
+const string BEGIN_DPP_COMMENT = "--BEGIN-DPP--";
+const string END_DPP_COMMENT = "--END-DPP--";
 
 class DipsSpec {
     string minClientVersion;
     string url;
     bool lastFloorEnd;
     FloorSpec[] floors;
+    float start = -1.0, finish = -1.0;
 
     DipsSpec(const string &in comment) {
-        warn("DipsSpec stub");
+        warn("DipsSpec stub: parsing from comment is not implemented yet.");
+    }
+
+    DipsSpec() {}
+
+    DipsSpec(CM_Editor::ProjectTab@ projTab) {
+        auto projInfo = projTab.GetInfoComponent();
+        this.minClientVersion = projInfo.px_minClientVersion;
+        this.url = projInfo.px_url;
+
+        auto floorsComp = projTab.GetFloorsComponent();
+        if (floorsComp !is null) {
+            this.lastFloorEnd = floorsComp.px_lastFloorEnd;
+            for (uint i = 0; i < floorsComp.nbFloors; i++) {
+                auto floorEl = floorsComp.getFloor(i);
+                this.floors.InsertLast(FloorSpec(floorEl));
+            }
+        }
+    }
+
+    string GenerateComment() {
+        string comment = BEGIN_DPP_COMMENT + "\n";
+        if (minClientVersion.Length > 0 && minClientVersion != "0.0.0") {
+            comment += "minClientVersion=" + minClientVersion + "\n";
+        }
+        if (url.Length > 0) {
+            comment += "url=" + url + "\n";
+        }
+        if (lastFloorEnd) {
+            comment += "lastFloorEnd=true\n";
+        }
+        for (uint i = 0; i < floors.Length; i++) {
+            comment += "floor" + i + "=" + floors[i].height;
+            if (floors[i].name.Length > 0) comment += "|" + floors[i].name;
+            comment += "\n";
+        }
+        comment += END_DPP_COMMENT;
+        return comment;
     }
 }
 
 class FloorSpec {
     float height;
     string name;
+
+    FloorSpec() {}
+
+    FloorSpec(CM_Editor::FloorEl@ floorEl) {
+        this.height = floorEl.height;
+        this.name = floorEl.name;
+    }
+
     Json::Value ToJson() {
         auto j = Json::Object();
         j["height"] = height;
