@@ -142,6 +142,11 @@ namespace CM_Editor {
             }
         }
 
+        // override this to return the minimum version required for this component
+        string GetMinVersion() {
+            return MIN_PLUGIN_VERSION_AUX_SPEC;
+        }
+
         void TryLoadingJson(const string &in jFName) {
             jsonPath = meta.ProjectFilePath(jFName);
             if (!meta.ProjectFileExists(jFName)) {

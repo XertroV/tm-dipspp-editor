@@ -8,7 +8,7 @@ namespace CM_Editor {
         string imageAsset;
         int subtitleParts = 0;
         EditableTrigger@ trigger;
-        bool allowRepeats = false;
+        int maxPlays = 1;
 
         VoiceLineEl() {
             @trigger = EditableTrigger(DEFAULT_VL_POS, DEFAULT_MT_SIZE, "VL");
@@ -19,7 +19,8 @@ namespace CM_Editor {
             JsonX::SafeGetString(j, "imageAsset", imageAsset);
             @trigger = EditableTrigger(j.Get("trigger", Json::Value()), DEFAULT_VL_POS, DEFAULT_MT_SIZE, "VL");
             subtitleParts = subtitles.Split("\n").Length;
-            JsonX::SafeGetBool(j, "allowRepeats", allowRepeats);
+            JsonX::SafeGetInt(j, "maxPlays", maxPlays);
+            if (maxPlays < 1) maxPlays = 1;
         }
         vec3 get_posMin() const { return trigger.get_posMin(); }
         Json::Value ToJson() {
@@ -28,7 +29,7 @@ namespace CM_Editor {
             j["subtitles"] = subtitles;
             j["imageAsset"] = imageAsset;
             j["trigger"] = trigger.ToJson();
-            j["allowRepeats"] = allowRepeats;
+            j["maxPlays"] = maxPlays;
             return j;
         }
         string PosStr() const { return trigger.PosStr(); }
@@ -36,7 +37,7 @@ namespace CM_Editor {
             bool changedSubtitles = false;
             string oldFile = file;
             string oldImageAsset = imageAsset;
-            bool oldAllowRepeats = allowRepeats;
+            int oldMaxPlays = maxPlays;
             string fullUrl = pTab.GetUrlPrefix() + file;
 
             file = pTab.AssetBrowser("Audio File", file, AssetTy::Audio);
@@ -68,8 +69,8 @@ namespace CM_Editor {
 
             UI::Separator();
 
-            allowRepeats = UI::Checkbox("Allow Repeats (can play if reached again)", allowRepeats);
-            AddSimpleTooltip("If enabled, this voice line can be triggered again.");
+            maxPlays = Math::Max(1, UI::InputInt("Max Plays (minimum 1)", maxPlays));
+            AddSimpleTooltip("How many times this voice line can be played. Minimum is 1. Set higher for repeatable lines.");
 
             UI::Separator();
 
@@ -81,7 +82,7 @@ namespace CM_Editor {
             UI::TextWrapped("- The mediatracker trigger size is 10.667 x 8 x 10.667");
 
             // Call OnDirty if any field changed
-            if ((file != oldFile) || changedSubtitles || (imageAsset != oldImageAsset) || (allowRepeats != oldAllowRepeats)) {
+            if ((file != oldFile) || changedSubtitles || (imageAsset != oldImageAsset) || (maxPlays != oldMaxPlays)) {
                 if (cmp !is null) cmp.OnDirty();
             }
         }
@@ -98,6 +99,13 @@ namespace CM_Editor {
             bool circleClicked = UI::IsItemClicked(UI::MouseButton::Left);
             AddSimpleTooltip(SUBTITLES_HELP);
             if (circleClicked) OpenBrowserURL("https://github.com/XertroV/tm-dips-plus-plus/blob/0d481094ef9fabb2095f93f853d841604ffaf35f/remote_assets/secret/subs-3948765.txt");
+        }
+
+        string GetMinVersion() {
+            if (maxPlays > 1) {
+                return "0.5.6";
+            }
+            return "0.5.5";
         }
     }
 
@@ -118,6 +126,17 @@ namespace CM_Editor {
             icon = Icons::CommentO;
             type = EProjectComponent::VoiceLines;
             thisTabClickRequiresTestPlaceMode = true;
+        }
+
+        string GetMinVersion() override {
+            auto minVer = ProjectComponent::GetMinVersion();
+            // find the maximum of all voice lines' minimum versions
+            // -- if there are more sub-components that have min-version requirements, we need to remember to add those here.
+            for (uint i = 0; i < m_voiceLines.Length; i++) {
+                auto vl = m_voiceLines[i];
+                minVer = SemVer::Max(minVer, vl.GetMinVersion());
+            }
+            return minVer;
         }
 
         // proxy methods for data access (px = proxy)

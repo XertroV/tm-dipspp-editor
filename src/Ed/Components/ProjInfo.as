@@ -398,6 +398,7 @@ namespace CM_Editor {
                     }
                 }
                 else UI::Text(BoolIcon(true) + " Min Client Version looks good!");
+                // todo: check components GetMinVersion() calls to see if we need a higher version
             }
 
             UI::Dummy(vec2(0, 4));
