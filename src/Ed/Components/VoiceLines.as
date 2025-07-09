@@ -8,16 +8,18 @@ namespace CM_Editor {
         string imageAsset;
         int subtitleParts = 0;
         EditableTrigger@ trigger;
+        bool allowRepeats = false;
 
         VoiceLineEl() {
             @trigger = EditableTrigger(DEFAULT_VL_POS, DEFAULT_MT_SIZE, "VL");
         }
         VoiceLineEl(const Json::Value@ j) {
-            file = j.Get("file", "");
-            subtitles = j.Get("subtitles", "");
-            imageAsset = j.Get("imageAsset", "");
+            JsonX::SafeGetString(j, "file", file);
+            JsonX::SafeGetString(j, "subtitles", subtitles);
+            JsonX::SafeGetString(j, "imageAsset", imageAsset);
             @trigger = EditableTrigger(j.Get("trigger", Json::Value()), DEFAULT_VL_POS, DEFAULT_MT_SIZE, "VL");
             subtitleParts = subtitles.Split("\n").Length;
+            JsonX::SafeGetBool(j, "allowRepeats", allowRepeats);
         }
         vec3 get_posMin() const { return trigger.get_posMin(); }
         Json::Value ToJson() {
@@ -26,6 +28,7 @@ namespace CM_Editor {
             j["subtitles"] = subtitles;
             j["imageAsset"] = imageAsset;
             j["trigger"] = trigger.ToJson();
+            j["allowRepeats"] = allowRepeats;
             return j;
         }
         string PosStr() const { return trigger.PosStr(); }
@@ -33,6 +36,7 @@ namespace CM_Editor {
             bool changedSubtitles = false;
             string oldFile = file;
             string oldImageAsset = imageAsset;
+            bool oldAllowRepeats = allowRepeats;
             string fullUrl = pTab.GetUrlPrefix() + file;
 
             file = pTab.AssetBrowser("Audio File", file, AssetTy::Audio);
@@ -64,6 +68,11 @@ namespace CM_Editor {
 
             UI::Separator();
 
+            allowRepeats = UI::Checkbox("Allow Repeats (can play if reached again)", allowRepeats);
+            AddSimpleTooltip("If enabled, this voice line can be triggered again.");
+
+            UI::Separator();
+
             trigger.DrawEditorUI();
 
             UI::Separator();
@@ -72,7 +81,7 @@ namespace CM_Editor {
             UI::TextWrapped("- The mediatracker trigger size is 10.667 x 8 x 10.667");
 
             // Call OnDirty if any field changed
-            if ((file != oldFile) || changedSubtitles || (imageAsset != oldImageAsset)) {
+            if ((file != oldFile) || changedSubtitles || (imageAsset != oldImageAsset) || (allowRepeats != oldAllowRepeats)) {
                 if (cmp !is null) cmp.OnDirty();
             }
         }

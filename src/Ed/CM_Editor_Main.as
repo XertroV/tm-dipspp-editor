@@ -144,6 +144,7 @@ string BoolIcon(bool f) {
 
 void SetEditorCameraToPos(vec3 pos, float dist = -1.0) {
     auto editor = cast<CGameCtnEditorFree>(GetApp().Editor);
+    if (editor is null) return;
     auto pmt = editor.PluginMapType;
     pmt.CameraTargetPosition = pos;
     if (dist > 0.0) pmt.CameraToTargetDistance = dist;

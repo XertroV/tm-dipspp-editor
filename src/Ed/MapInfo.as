@@ -15,7 +15,15 @@ namespace CM_Editor {
 
         void DrawComponentInner(ProjectTab@ pTab) override {
             auto editor = cast<CGameCtnEditorFree>(GetApp().Editor);
+            if (editor is null) {
+                UI::Text("Load a map in the editor.");
+                return;
+            }
             auto map = editor.Challenge;
+            if (map is null) {
+                UI::Text("\\$f80 No map loaded in the editor?!?!?!?");
+                return;
+            }
 
             UI::Text("Map UID: " + map.Id.GetName());
             UI::Text("Map Name: " + map.MapName);
