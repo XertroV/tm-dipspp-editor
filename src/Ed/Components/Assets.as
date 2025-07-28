@@ -345,6 +345,9 @@ namespace CM_Editor {
 
         void TryLoadingJson(const string&in jFName) override {
             ProjectComponent::TryLoadingJson(jFName);
+            if (!JsonX::IsObject(ro_data)) {
+                CreateDefaultJsonObject();
+            }
             if (ro_data.HasKey(IMAGES_K)) {
                 @images = AssetsCollection(ro_data[IMAGES_K]);
             }

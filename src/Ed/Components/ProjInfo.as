@@ -576,6 +576,10 @@ namespace CM_Editor {
             UI::Text("Finalize: Set Map Comment");
 
             auto map = GetApp().RootMap;
+            if (map is null) {
+                UI::Text("\\$f80 No map loaded! Please load a map first.");
+                return;
+            }
 
             // Keep editableMapComment in sync with map.Comments unless user edits
             if (_wiz_editableMapComment.Length == 0 || _wiz_lastMapHash != Crypto::MD5(map.Comments)) {

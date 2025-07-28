@@ -147,6 +147,9 @@ namespace CM_Editor {
         void TryLoadingJson(const string&in jFName) override {
             ProjectComponent::TryLoadingJson(jFName);
             m_voiceLines.RemoveRange(0, m_voiceLines.Length);
+            if (!JsonX::IsObject(ro_data)) {
+                CreateDefaultJsonObject();
+            }
             if (ro_data.HasKey("lines") && ro_data["lines"].GetType() == Json::Type::Array) {
                 auto arr = ro_data["lines"];
                 for (uint i = 0; i < arr.Length; i++) {

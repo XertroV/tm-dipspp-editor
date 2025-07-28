@@ -99,6 +99,9 @@ namespace CM_Editor {
         void TryLoadingJson(const string&in jFName) override {
             ProjectComponent::TryLoadingJson(jFName);
             m_floors.Clear();
+            if (!JsonX::IsObject(ro_data)) {
+                CreateDefaultJsonObject();
+            }
             if (ro_data.HasKey("floors")) {
                 m_floors.LoadFromJson(ro_data["floors"]);
             }

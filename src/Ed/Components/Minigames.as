@@ -489,8 +489,8 @@ namespace CM_Editor {
         void TryLoadingJson(const string &in jFile) override {
             ProjectComponent::TryLoadingJson(jFile);
             minigames.Resize(0);
-            if (ro_data.GetType() != Json::Type::Object) {
-                rw_data = Json::Object(); // reset if not an object
+            if (!JsonX::IsObject(ro_data)) {
+                CreateDefaultJsonObject();
             }
             if (ro_data.HasKey("games") && ro_data["games"].GetType() == Json::Type::Array) {
                 auto arr = rw_data["games"];
@@ -543,7 +543,7 @@ namespace CM_Editor {
         }
 
         void CreateDefaultJsonObject() override {
-            rw_data = Json::Array();
+            rw_data = Json::Object();
             minigames.Resize(0);
         }
         void DrawEditorUI(ProjectTab@ pTab) {
