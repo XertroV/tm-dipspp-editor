@@ -480,7 +480,7 @@ namespace CM_Editor {
                 _wiz_generatedJsonString = "";
             }
 
-            UI::InputTextMultiline("##json", _wiz_generatedJsonString, false, vec2(-1, 200), UI::InputTextFlags::ReadOnly);
+            UI::InputTextMultiline("##json", _wiz_generatedJsonString, vec2(-1, 200), UI::InputTextFlags::ReadOnly);
 
             UI::SeparatorText("Upload");
             UI::AlignTextToFramePadding();
