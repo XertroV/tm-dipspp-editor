@@ -331,7 +331,7 @@ namespace CM_Editor {
             slug = json.Get("slug", "");
             auto paramsJson = json["params"];
             @params = MinigameParams(paramsJson);
-            @bounds = EditableTrigger(json.Get("bounds", Json::Value()), DEFAULT_VL_POS, DEFAULT_MG_BOUNDS_SIZE, "Bounds", "Bounds");
+            @bounds = EditableTrigger(json.Get("bounds", Json::Value()), DEFAULT_VL_POS, DEFAULT_MG_BOUNDS_SIZE, "Bounds", name);
         }
 
         Minigame(const string &in _name, MinigameType _type) {
@@ -339,7 +339,7 @@ namespace CM_Editor {
             type = _type;
             slug = "";
             @params = MinigameParams();
-            @bounds = EditableTrigger(DEFAULT_VL_POS, DEFAULT_MG_BOUNDS_SIZE, "Bounds", "Bounds");
+            @bounds = EditableTrigger(DEFAULT_VL_POS, DEFAULT_MG_BOUNDS_SIZE, "Bounds", name);
         }
         Json::Value@ ToJson() {
             auto j = Json::Object();

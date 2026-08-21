@@ -56,6 +56,7 @@ namespace CM_Editor {
             }
         }
         void DrawEditorUI() {
+            UI::PushID(label);
             if (isEditing) {
                 posBottomCenter = GetEditorItemCursorPos() - vec3(0, 0.5, 0);
                 UI::BeginDisabled();
@@ -73,6 +74,7 @@ namespace CM_Editor {
             if (UI::Button(Icons::Eye + " Show##" + label)) {
                 SetEditorCameraToPos(posBottomCenter);
             }
+            UI::PopID();
         }
         void OnMouseClick() {
             NotifyWarning("EditableTrigger OnMouseClick");
