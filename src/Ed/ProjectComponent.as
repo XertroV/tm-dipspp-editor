@@ -7,11 +7,11 @@ namespace CM_Editor {
         VoiceLines,
         TextTriggers,
         Assets,
+        Minigames,
 #if !DEV
         _LAST, // hide below this when not in dev mode
 #endif
         Collectables,
-        Minigames,
 #if DEV
         _LAST, // this is used to mark the end of entries we loop through for the checklist
 #endif

@@ -316,30 +316,48 @@ namespace CM_Editor {
         }
     }
 
+    const vec3 DEFAULT_MG_BOUNDS_SIZE = vec3(200, 200, 200);
+
     class Minigame {
         string name;
+        string slug;
         MinigameType type;
         MinigameParams@ params;
+        EditableTrigger@ bounds;
 
         Minigame(Json::Value@ json) {
             name = json.Get("name", "");
             type = MinigameType(int(json.Get("type", 0)));
-            // Detect type and instantiate correct params subclass
+            slug = json.Get("slug", "");
             auto paramsJson = json["params"];
             @params = MinigameParams(paramsJson);
+            @bounds = EditableTrigger(json.Get("bounds", Json::Value()), DEFAULT_VL_POS, DEFAULT_MG_BOUNDS_SIZE, "Bounds", "Bounds");
         }
 
         Minigame(const string &in _name, MinigameType _type) {
             name = _name;
             type = _type;
+            slug = "";
             @params = MinigameParams();
+            @bounds = EditableTrigger(DEFAULT_VL_POS, DEFAULT_MG_BOUNDS_SIZE, "Bounds", "Bounds");
         }
         Json::Value@ ToJson() {
             auto j = Json::Object();
             j["name"] = name;
+            j["slug"] = slug;
+            j["kind"] = tostring(type);
             j["type"] = int(type);
+            j["bounds"] = bounds.ToJson();
             j["params"] = params.ToJson();
             return j;
+        }
+        void DrawSharedEditor() {
+            slug = UI::InputText("Slug", slug);
+            UI::TextWrapped("Identity. After publish, changing this is a new minigame.");
+            UI::Separator();
+            UI::Text("Minigame Bounds (leave cancels the attempt)");
+            bounds.DrawEditorUI();
+            bounds.DrawNvgBox(cCyan);
         }
         void DrawEditor(ProjectTab@ pTab) {
             UI::Text("OVERRIDE ME");
@@ -360,10 +378,22 @@ namespace CM_Editor {
         TimeTrialMinigame(Json::Value@ json) {
             super(json);
             @params = TimeTrialMinigameParams(json["params"]);
+            EnsureDefaultBounds();
         }
         TimeTrialMinigame(const string &in _name) {
             super(_name, MinigameType::TimeTrial);
             @params = TimeTrialMinigameParams();
+            EnsureDefaultBounds();
+        }
+        void EnsureDefaultBounds() {
+            TimeTrialMinigameParams@ tt = cast<TimeTrialMinigameParams@>(params);
+            if (tt is null || bounds is null) return;
+            if ((bounds.posBottomCenter - DEFAULT_VL_POS).LengthSquared() > 0.01) return;
+            vec3 mid = (tt.startTrigger.posBottomCenter + tt.endTrigger.posBottomCenter) * 0.5;
+            bounds.posBottomCenter = mid;
+            bounds.size = DEFAULT_MG_BOUNDS_SIZE;
+            bounds.name = "Bounds";
+            bounds.label = "Bounds";
         }
         void DrawEditor(ProjectTab@ pTab) override {
             UI::Text("Name: " + name);
@@ -514,6 +544,7 @@ namespace CM_Editor {
                         warn("Unknown MinigameType: " + tostring(type));
                         continue;
                     }
+                    this.EnsureSlug(minigame);
                     minigames.InsertLast(minigame);
                 }
             }
@@ -538,8 +569,31 @@ namespace CM_Editor {
             DrawEditorUI(pTab);
         }
 
+        void EnsureSlug(Minigame@ minigame) {
+            if (minigame.slug.Length == 0) {
+                minigame.slug = UniqueSlug(tostring(minigame.type));
+            }
+        }
+
         void AddMinigame(Minigame@ minigame) {
+            this.EnsureSlug(minigame);
             minigames.InsertLast(minigame);
+            this.OnDirty();
+        }
+
+        string UniqueSlug(const string &in prefix) {
+            for (uint n = 1; n < 10000; n++) {
+                string candidate = prefix + "-" + n;
+                bool taken = false;
+                for (uint i = 0; i < minigames.Length; i++) {
+                    if (minigames[i].slug == candidate) {
+                        taken = true;
+                        break;
+                    }
+                }
+                if (!taken) return candidate;
+            }
+            return prefix + "-x";
         }
 
         void CreateDefaultJsonObject() override {
@@ -560,6 +614,7 @@ namespace CM_Editor {
             auto minigame = minigames[editingIx];
             UI::Text("Editing Minigame: " + minigame.name);
             minigame.name = UI::InputText("Name", minigame.name);
+            minigame.DrawSharedEditor();
             if (UI::Button("Done")) {
                 editingIx = -1; // Exit editing mode
             }
@@ -580,7 +635,7 @@ namespace CM_Editor {
                 UI::Text("Minigame " + (i + 1) + ": " + minigames[i].name);
                 auto p1 = UI::GetCursorPos();
                 UI::AlignTextToFramePadding();
-                UI::Text("Type: " + tostring(minigames[i].type));
+                UI::Text("Type: " + tostring(minigames[i].type) + "  slug: " + minigames[i].slug);
                 UI::SameLine();
                 if (UI::Button("Edit##" + i)) {
                     editingIx = int(i); // Enter editing mode
