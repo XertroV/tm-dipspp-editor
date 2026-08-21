@@ -9,6 +9,7 @@ void RenderMenu() {
 
 void Render() {
     CM_Editor::Render();
+    CM_Editor::UpdateTestSpecStrip();
 }
 
 void RenderInterface() {
