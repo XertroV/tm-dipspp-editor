@@ -66,7 +66,7 @@ namespace CM_Editor {
 
             DrawAssetsEtcSection(pTab);
 
-            UI::PushFont(UI::Font::Default26);
+            UI::PushFont(UI::Font::Default, 26.0);
             UI::SeparatorText("\\$s F I N A L I Z A T I O N  &  U P L O A D ");
             UI::PopFont();
 
@@ -660,7 +660,7 @@ namespace CM_Editor {
         void FinWiz_99_Done() {
             UI::AlignTextToFramePadding();
             UI::TextWrapped("Congratulations! You have set everything up.");
-            UI::PushFont(UI::Font::Default20);
+            UI::PushFont(UI::Font::Default, 20.0);
             UI::AlignTextToFramePadding();
             UI::Text("\\$8fcPlease save your map now!");
 

@@ -21,11 +21,11 @@ void Main() {
     // CM_Editor::Main();
 }
 
-vec2 g_screen = vec2(Draw::GetWidth(), Draw::GetHeight());
+vec2 g_screen = Display::GetSize();
 vec2 g_lastMousePos = vec2(0, 0);
 
 void RenderEarly() {
-    g_screen = vec2(Draw::GetWidth(), Draw::GetHeight());
+    g_screen = Display::GetSize();
     g_lastMousePos = vec2(UI::GetMousePos());
 }
 
