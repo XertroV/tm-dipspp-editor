@@ -298,7 +298,7 @@ namespace CM_Editor {
                 UI::PushStyleColor(UI::Col::Text, cOrange);
                 UI::TextWrapped(Icons::ExclamationTriangle + " This project has " + mgComp.minigames.Length + " minigame(s). Simple workflow (map comment only) will not upload them — use Advanced.");
                 if (mgComp.HasAnyIssues()) {
-                    UI::TextWrapped(Icons::ExclamationTriangle + " Some minigames have problems (bounds not set, or start/end outside bounds). Advanced workflow will block upload until they are fixed.");
+                    UI::TextWrapped(Icons::ExclamationTriangle + " Some minigames have problems (missing start/end, start outside bounds, or duplicate slug). Advanced workflow will block upload until they are fixed.");
                 }
                 UI::PopStyleColor();
             }
@@ -451,7 +451,7 @@ namespace CM_Editor {
 
             UI::Text("Finalization: Minigame Checks");
             UI::SeparatorText("");
-            UI::TextWrapped("Bounds must be placed, and start/end (and checkpoints) must sit inside them. Leaving bounds cancels an attempt.");
+            UI::TextWrapped("Start must be placed (and end, where the kind needs it). Custom bounds are optional — omit uses a default 200 m square. Survival start must sit inside bounds. Leaving bounds cancels an attempt.");
 
             auto mgComp = pTabForWiz.GetMinigamesComponent();
             if (mgComp is null || mgComp.minigames.Length == 0) {
@@ -466,13 +466,15 @@ namespace CM_Editor {
 
             for (uint i = 0; i < mgComp.minigames.Length; i++) {
                 auto mg = mgComp.minigames[i];
-                MinigameIssue@[] gameIssues;
-                mg.CollectIssues(gameIssues);
                 string label = mg.slug.Length > 0 ? mg.slug : mg.name;
+                MinigameIssue@[] gameIssues;
+                for (uint j = 0; j < issues.Length; j++) {
+                    if (issues[j].slug == mg.slug || issues[j].slug == mg.name) gameIssues.InsertLast(issues[j]);
+                }
                 if (gameIssues.Length == 0) {
-                    UI::Text(BoolIcon(true) + " " + label);
+                    UI::Text(BoolIcon(true) + " " + label + "  " + KindLabel(mg.kind) + mg.FlagsLabel());
                 } else {
-                    UI::Text(BoolIcon(false) + " " + label);
+                    UI::Text(BoolIcon(false) + " " + label + "  " + KindLabel(mg.kind) + mg.FlagsLabel());
                     UI::Indent();
                     for (uint j = 0; j < gameIssues.Length; j++) {
                         UI::Text("\\$f80" + Icons::ExclamationTriangle + " " + gameIssues[j].message);

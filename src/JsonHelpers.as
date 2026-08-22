@@ -6,6 +6,14 @@ Json::Value@ Nat2ToJson(const nat2 &in v) {
     return j;
 }
 
+Json::Value@ Vec3ToJson(const vec3 &in v) {
+    auto @j = Json::Array();
+    j.Add(v.x);
+    j.Add(v.y);
+    j.Add(v.z);
+    return j;
+}
+
 vec3 JsonToVec3(const Json::Value@ j, const vec3 &in defaultValue = vec3(0, 0, 0)) {
     if (j.GetType() != Json::Type::Array) {
 #if DEV
