@@ -68,13 +68,21 @@ namespace CM_Editor {
             type = EProjectComponent::Floors;
             canInitFromDipsSpecComment = true;
             thisTabClickRequiresTestPlaceMode = true;
+            ApplyDefaultStartFinish();
         }
 
         // --- Start/Finish properties and user flags ---
         private float _userStart = 0.0f;
-        private float _userFinish = 0.0f;
+        private float _userFinish = 2048.0f;
         private bool _useUserStart = false;
         private bool _useUserFinish = false;
+
+        private void ApplyDefaultStartFinish() {
+            _userStart = 0.0f;
+            _userFinish = 2048.0f;
+            _useUserStart = false;
+            _useUserFinish = false;
+        }
 
         // Proxy accessors for UI and serialization
         float get_px_start() const { return _userStart; }
@@ -105,9 +113,13 @@ namespace CM_Editor {
             if (ro_data.HasKey("floors")) {
                 m_floors.LoadFromJson(ro_data["floors"]);
             }
-            // Load start/finish and flags
-            JsonX::SafeGetFloat(ro_data, "start", _userStart);
-            JsonX::SafeGetFloat(ro_data, "finish", _userFinish);
+            // Load start/finish and flags. Missing/NaN heights stay at 0 / 2048.
+            if (!JsonX::SafeGetFloat(ro_data, "start", _userStart) || Math::IsNaN(_userStart)) {
+                _userStart = 0.0f;
+            }
+            if (!JsonX::SafeGetFloat(ro_data, "finish", _userFinish) || Math::IsNaN(_userFinish)) {
+                _userFinish = 2048.0f;
+            }
             JsonX::SafeGetBool(ro_data, "useStart", _useUserStart);
             JsonX::SafeGetBool(ro_data, "useFinish", _useUserFinish);
         }
@@ -122,13 +134,14 @@ namespace CM_Editor {
         }
 
         void CreateDefaultJsonObject() override {
+            ApplyDefaultStartFinish();
             auto j = Json::Object();
             j["floors"] = Json::Array();
             j["lastFloorEnd"] = false;
-            j["start"] = 0.0f;
-            j["finish"] = 0.0f;
-            j["useStart"] = false;
-            j["useFinish"] = false;
+            j["start"] = _userStart;
+            j["finish"] = _userFinish;
+            j["useStart"] = _useUserStart;
+            j["useFinish"] = _useUserFinish;
             rw_data = j;
             m_floors.Clear();
         }
