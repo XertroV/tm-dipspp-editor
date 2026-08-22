@@ -125,8 +125,38 @@ for pluginSrc in ${pluginSources[@]}; do
   else
     case $_build_mode in
       dev|prerelease|unittest)
-        # trigger remote build
-        tm-remote-build load folder "$PLUGIN_FOLDER_NAME" --host 172.18.16.1 --port 30000 -v -d "$HOME/OpenplanetNext/"
+        sync
+        if command -v tm-remote-build >/dev/null 2>&1; then
+          OP_DATA_DIR=${OPENPLANET_DIR:-$(dirname "${PLUGINS_DIR%/}")}
+          REMOTE_RELOAD_HOST=${DIPS_REMOTE_HOST:-$(ss -ltnH 2>/dev/null | awk '$4 ~ /:30000$/ { sub(/:[0-9]+$/, "", $4); print $4; exit }')}
+          _remote_host_args=()
+          if [[ -n "$REMOTE_RELOAD_HOST" && "$REMOTE_RELOAD_HOST" != "0.0.0.0" && "$REMOTE_RELOAD_HOST" != "*" ]]; then
+            _remote_host_args=(--host "$REMOTE_RELOAD_HOST")
+          fi
+          REMOTE_RELOAD_TIMEOUT=${DIPS_REMOTE_RELOAD_TIMEOUT:-60s}
+          if [[ "$REMOTE_RELOAD_TIMEOUT" =~ ^[0-9]+$ ]]; then
+            REMOTE_RELOAD_TIMEOUT="${REMOTE_RELOAD_TIMEOUT}s"
+          fi
+          _colortext16 green "🔁 Reloading ${PLUGIN_FOLDER_NAME} through Openplanet RemoteBuild...\n"
+          _remote_reload_log="$(mktemp)"
+          set +e
+          timeout --foreground "$REMOTE_RELOAD_TIMEOUT" tm-remote-build load folder "$PLUGIN_FOLDER_NAME" -op OpenplanetNext "${_remote_host_args[@]}" -d "$OP_DATA_DIR" \
+            -l "${DIPS_REMOTE_LOG_DONE_LIMIT:-3}" \
+            -i "${DIPS_REMOTE_LOG_CHECK_INTERVAL:-0.5}" 2>&1 | tee "$_remote_reload_log"
+          _remote_reload_exit_code="${PIPESTATUS[0]}"
+          if [[ "$_remote_reload_exit_code" == "0" ]] && grep -Eq "ERROR:tm_remote_build|Problem commanding" "$_remote_reload_log"; then
+            _remote_reload_exit_code=1
+          fi
+          set -e
+          rm -f "$_remote_reload_log"
+          if [[ "$_remote_reload_exit_code" == "124" ]]; then
+            _colortext16 yellow "⚠ Warning: tm-remote-build timed out after ${REMOTE_RELOAD_TIMEOUT}; check Openplanet.log.\n"
+          elif [[ "$_remote_reload_exit_code" != "0" ]]; then
+            _colortext16 yellow "⚠ Warning: tm-remote-build reported an error; check Openplanet.log.\n"
+          fi
+        else
+          _colortext16 yellow "⚠ Warning: tm-remote-build not found; skipping RemoteBuild reload.\n"
+        fi
         ;;
     esac
     _colortext16 green "✅ Release file: ${RELEASE_NAME}"
