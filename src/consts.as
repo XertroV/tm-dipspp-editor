@@ -14,4 +14,4 @@ const vec3 BACKWARD = vec3(0, 0, 1);
 
 float g_scale = UI::GetScale();
 
-const string MIN_PLUGIN_VERSION_AUX_SPEC = "0.5.5";
+const string MIN_PLUGIN_VERSION_AUX_SPEC = "0.5.10";

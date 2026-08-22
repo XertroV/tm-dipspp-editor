@@ -8,13 +8,9 @@ namespace CM_Editor {
         TextTriggers,
         Assets,
         Minigames,
-#if !DEV
-        _LAST, // hide below this when not in dev mode
-#endif
-        Collectables,
-#if DEV
-        _LAST, // this is used to mark the end of entries we loop through for the checklist
-#endif
+        Collectibles,
+        Hats,
+        _LAST, // end of checklist entries; MapInfo is not a data file
         MapInfo,
     }
 
@@ -27,7 +23,8 @@ namespace CM_Editor {
             case EProjectComponent::VoiceLines: return "Voice Lines";
             case EProjectComponent::TextTriggers: return "Text Triggers";
             case EProjectComponent::Assets: return "Assets";
-            case EProjectComponent::Collectables: return "Collectables";
+            case EProjectComponent::Collectibles: return "Collectibles";
+            case EProjectComponent::Hats: return "Hats";
             case EProjectComponent::Minigames: return "Minigames";
         }
         return "? Unknown ?";

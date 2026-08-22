@@ -257,18 +257,16 @@ namespace CM_Editor {
         }
 
 
-        uint wTabIx_Prep, wTabIx_MapComment, wTabIx_Done, wTabIx_Adv1Conf, wTabIx_Minigames, wTabIx_Adv2Url,
+        uint wTabIx_Prep, wTabIx_MapComment, wTabIx_Done, wTabIx_Adv1Conf, wTabIx_Minigames, wTabIx_Collectibles, wTabIx_Adv2Url,
             wTabIx_PreUpload, wTabIx_ConfirmUpload;
 
         protected void SetUpWizardTabs() {
             if (finalizationWizard.nbTabs > 0) return; // already set up
             wTabIx_Prep = finalizationWizard.AddTab("Final Prep", CoroutineFunc(this.FinWiz_10_InitialPrep), Icons::ListOl);
-            // - if yes -> go to Map Comment step
-            // - otherwise -> go through all steps
-            // Adv1: set min version -- must be at least 0.5.5 to support the new custom map aux spec. set name_id too
+            // Adv1: set min version -- must be at least 0.5.10 to support the custom map aux spec. set name_id too
             wTabIx_Adv1Conf = finalizationWizard.AddTab("Advanced 1", CoroutineFunc(this.FinWiz_20_Advanced1), Icons::Cog);
             wTabIx_Minigames = finalizationWizard.AddTab("Minigames", CoroutineFunc(this.FinWiz_25_MinigameChecks), Icons::Gamepad);
-            // Adv2: check asset URLs -- since assets are downloaded, all the URLs should work. (The user can move on if they know what they're doing).
+            wTabIx_Collectibles = finalizationWizard.AddTab("Collectibles", CoroutineFunc(this.FinWiz_26_CollectibleHatChecks), Icons::Gift);
             wTabIx_Adv2Url = finalizationWizard.AddTab("URL Checks", CoroutineFunc(this.FinWiz_30_CheckUrls), Icons::Link);
             wTabIx_PreUpload = finalizationWizard.AddTab("Upload JSON", CoroutineFunc(this.FinWiz_40_PreUpload), Icons::Upload);
             wTabIx_ConfirmUpload = finalizationWizard.AddTab("Confirm Upload", CoroutineFunc(this.FinWiz_50_ConfirmUpload), Icons::CloudUpload);
@@ -489,6 +487,59 @@ namespace CM_Editor {
             } else {
                 UI::Text(BoolIcon(false) + " Fix these in the Minigames component before uploading.");
                 finalizationWizard.SetNextNavButtonDisabled();
+            }
+        }
+
+        void FinWiz_26_CollectibleHatChecks() {
+            _wiz_generatedDipsSpec = "";
+            @_wiz_generatedJsonObject = null;
+            _wiz_generatedJsonString = "";
+
+            UI::Text("Finalization: Collectibles & Hats");
+            UI::SeparatorText("");
+            UI::TextWrapped("Collectibles need a collect path (zone and/or collect-on-unlock). A bound item requires a zone. Two collectibles cannot share one item. Hats bind a model idName; copies are scanned on load.");
+
+            bool blocking = false;
+            auto colComp = pTabForWiz.GetCollectiblesComponent();
+            SpecIssue@[] colIssues;
+            if (colComp is null || colComp.collectibles.Length == 0) {
+                UI::Text(BoolIcon(true) + " No collectibles.");
+            } else {
+                colComp.CollectIssues(colIssues);
+                UI::Text("Collectibles: " + colComp.collectibles.Length);
+                DrawSpecIssueList(colComp.collectibles.Length, colIssues);
+                if (colIssues.Length > 0) blocking = true;
+            }
+
+            UI::SeparatorText("");
+            auto hatComp = pTabForWiz.GetHatsComponent();
+            SpecIssue@[] hatIssues;
+            if (hatComp is null || hatComp.hats.Length == 0) {
+                UI::Text(BoolIcon(true) + " No hats.");
+            } else {
+                hatComp.CollectIssues(hatIssues);
+                UI::Text("Hats: " + hatComp.hats.Length);
+                DrawSpecIssueList(hatComp.hats.Length, hatIssues);
+                if (hatIssues.Length > 0) blocking = true;
+            }
+
+            UI::SeparatorText("");
+            if (!blocking) {
+                UI::Text(BoolIcon(true) + " Collectible and hat checks passed.");
+            } else {
+                UI::Text(BoolIcon(false) + " Fix these before uploading.");
+                finalizationWizard.SetNextNavButtonDisabled();
+            }
+        }
+
+        void DrawSpecIssueList(uint nItems, SpecIssue@[]@ issues) {
+            if (issues.Length == 0) {
+                UI::Text(BoolIcon(true) + " " + nItems + " ok");
+                return;
+            }
+            for (uint i = 0; i < issues.Length; i++) {
+                string label = issues[i].slug.Length > 0 ? issues[i].slug : "(unnamed)";
+                UI::Text("\\$f80" + Icons::ExclamationTriangle + " " + label + ": " + issues[i].message);
             }
         }
 

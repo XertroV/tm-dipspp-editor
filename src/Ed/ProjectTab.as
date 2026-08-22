@@ -52,7 +52,9 @@ namespace CM_Editor {
     const string PROJ_FILE_TRIGGERS = "triggers.json.txt";
     const string PROJ_FILE_MINIGAMES = "minigames.json.txt";
     const string PROJ_FILE_ASSETS = "assets.json.txt";
-    const string PROJ_FILE_COLLECTABLES = "collectables.json.txt";
+    const string PROJ_FILE_COLLECTIBLES = "collectibles.json.txt";
+    const string PROJ_FILE_COLLECTABLES_LEGACY = "collectables.json.txt";
+    const string PROJ_FILE_HATS = "hats.json.txt";
 
     // MARK: Project Tab
 
@@ -74,10 +76,8 @@ namespace CM_Editor {
             grp2.AddComponent(ProjectAssetsComponent(PROJ_FILE_ASSETS, meta));
             grp2.AddComponent(TextTriggersComponent(PROJ_FILE_TRIGGERS, meta));
             grp2.AddComponent(ProjectMinigamesComponent(PROJ_FILE_MINIGAMES, meta));
-#if DEV
-            // grp2.AddComponent(ProjectTriggersComponent());
-            // grp2.AddComponent(ProjectCollectablesComponent());
-#endif
+            grp2.AddComponent(ProjectCollectiblesComponent(PROJ_FILE_COLLECTIBLES, meta));
+            grp2.AddComponent(ProjectHatsComponent(PROJ_FILE_HATS, meta));
         }
 
         ProjectComponentGroup@ AddComponentGroup(const string &in name) {
@@ -115,6 +115,14 @@ namespace CM_Editor {
 
         ProjectMinigamesComponent@ GetMinigamesComponent() {
             return cast<ProjectMinigamesComponent>(GetComponentByType(EProjectComponent::Minigames));
+        }
+
+        ProjectCollectiblesComponent@ GetCollectiblesComponent() {
+            return cast<ProjectCollectiblesComponent>(GetComponentByType(EProjectComponent::Collectibles));
+        }
+
+        ProjectHatsComponent@ GetHatsComponent() {
+            return cast<ProjectHatsComponent>(GetComponentByType(EProjectComponent::Hats));
         }
 
         // Note: has no internal json data
@@ -271,11 +279,16 @@ namespace CM_Editor {
             if (assets !is null) root["assets"] = assets.ToJson();
 
             // Minigames
-            auto minigames = cast<ProjectMinigamesComponent>(GetComponentByType(EProjectComponent::Minigames));
+            auto minigames = GetMinigamesComponent();
             if (minigames !is null) root["minigames"] = minigames.ToJson();
-            // Collectables
-            auto collectables = GetComponentByType(EProjectComponent::Collectables);
-            if (collectables !is null) root["collectables"] = collectables.ro_data;
+            // Collectibles (sibling array; never write "collectables")
+            auto collectibles = GetCollectiblesComponent();
+            if (collectibles !is null) root["collectibles"] = collectibles.ToItemsJson();
+            else root["collectibles"] = Json::Array();
+            // Hats (sibling array)
+            auto hats = GetHatsComponent();
+            if (hats !is null) root["hats"] = hats.ToItemsJson();
+            else root["hats"] = Json::Array();
 
             return root;
         }
