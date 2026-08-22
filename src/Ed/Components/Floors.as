@@ -68,7 +68,6 @@ namespace CM_Editor {
             type = EProjectComponent::Floors;
             canInitFromDipsSpecComment = true;
             thisTabClickRequiresTestPlaceMode = true;
-            ApplyDefaultStartFinish();
         }
 
         // --- Start/Finish properties and user flags ---
