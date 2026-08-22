@@ -113,6 +113,10 @@ namespace CM_Editor {
             return cast<TextTriggersComponent>(GetComponentByType(EProjectComponent::TextTriggers));
         }
 
+        ProjectMinigamesComponent@ GetMinigamesComponent() {
+            return cast<ProjectMinigamesComponent>(GetComponentByType(EProjectComponent::Minigames));
+        }
+
         // Note: has no internal json data
         MapInfoComponent@ GetMapInfoComponent() {
             return cast<MapInfoComponent>(GetComponentByType(EProjectComponent::MapInfo));

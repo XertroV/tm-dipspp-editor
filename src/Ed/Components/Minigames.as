@@ -318,6 +318,31 @@ namespace CM_Editor {
 
     const vec3 DEFAULT_MG_BOUNDS_SIZE = vec3(200, 200, 200);
 
+    bool IsDefaultPlacement(EditableTrigger@ t) {
+        if (t is null) return true;
+        return (t.posBottomCenter - DEFAULT_VL_POS).LengthSquared() < 0.01;
+    }
+
+    bool TriggerFullyInside(EditableTrigger@ outer, EditableTrigger@ inner) {
+        if (outer is null || inner is null) return false;
+        vec3 oMin = outer.posMin;
+        vec3 iMin = inner.posMin;
+        vec3 oMax = oMin + outer.size;
+        vec3 iMax = iMin + inner.size;
+        return iMin.x >= oMin.x && iMin.y >= oMin.y && iMin.z >= oMin.z
+            && iMax.x <= oMax.x && iMax.y <= oMax.y && iMax.z <= oMax.z;
+    }
+
+    class MinigameIssue {
+        string slug;
+        string message;
+
+        MinigameIssue(const string &in slug_, const string &in message_) {
+            slug = slug_;
+            message = message_;
+        }
+    }
+
     class Minigame {
         string name;
         string slug;
@@ -351,13 +376,46 @@ namespace CM_Editor {
             j["params"] = params.ToJson();
             return j;
         }
+        void AddIssue(MinigameIssue@[]@ issues, const string &in message) {
+            issues.InsertLast(MinigameIssue(slug.Length > 0 ? slug : name, message));
+        }
+
+        void CollectTriggerIssues(MinigameIssue@[]@ issues, EditableTrigger@ t, const string &in label) {
+            if (IsDefaultPlacement(t)) {
+                AddIssue(issues, label + " not set");
+            } else if (!TriggerFullyInside(bounds, t)) {
+                AddIssue(issues, label + " is outside bounds");
+            }
+        }
+
+        void CollectIssues(MinigameIssue@[]@ issues) {
+            if (slug.Length == 0) AddIssue(issues, "slug is empty");
+            if (IsDefaultPlacement(bounds)) AddIssue(issues, "bounds not set");
+        }
+
+        bool HasIssues() {
+            MinigameIssue@[] issues;
+            CollectIssues(issues);
+            return issues.Length > 0;
+        }
+
+        void DrawIssueLine(const string &in message) {
+            UI::PushStyleColor(UI::Col::Text, cOrange);
+            UI::TextWrapped(Icons::ExclamationTriangle + " " + message);
+            UI::PopStyleColor();
+        }
+
         void DrawSharedEditor() {
             slug = UI::InputText("Slug", slug);
             UI::TextWrapped("Identity. After publish, changing this is a new minigame.");
             UI::Separator();
-            UI::Text("Minigame Bounds (leave cancels the attempt)");
+            UI::Text("Minigame Bounds (required — leave cancels the attempt)");
+            if (IsDefaultPlacement(bounds)) {
+                DrawIssueLine("Bounds are still at the default. Set them so they cover start and end.");
+            }
+            if (slug.Length == 0) DrawIssueLine("Slug is empty.");
             bounds.DrawEditorUI();
-            bounds.DrawNvgBox(cCyan);
+            bounds.DrawNvgBox(IsDefaultPlacement(bounds) ? cOrange : cCyan);
         }
         void DrawEditor(ProjectTab@ pTab) {
             UI::Text("OVERRIDE ME");
@@ -378,37 +436,45 @@ namespace CM_Editor {
         TimeTrialMinigame(Json::Value@ json) {
             super(json);
             @params = TimeTrialMinigameParams(json["params"]);
-            EnsureDefaultBounds();
         }
         TimeTrialMinigame(const string &in _name) {
             super(_name, MinigameType::TimeTrial);
             @params = TimeTrialMinigameParams();
-            EnsureDefaultBounds();
         }
-        void EnsureDefaultBounds() {
+        void CollectIssues(MinigameIssue@[]@ issues) override {
+            Minigame::CollectIssues(issues);
             TimeTrialMinigameParams@ tt = cast<TimeTrialMinigameParams@>(params);
-            if (tt is null || bounds is null) return;
-            if ((bounds.posBottomCenter - DEFAULT_VL_POS).LengthSquared() > 0.01) return;
-            vec3 mid = (tt.startTrigger.posBottomCenter + tt.endTrigger.posBottomCenter) * 0.5;
-            bounds.posBottomCenter = mid;
-            bounds.size = DEFAULT_MG_BOUNDS_SIZE;
-            bounds.name = "Bounds";
-            bounds.label = "Bounds";
+            if (tt is null) return;
+            CollectTriggerIssues(issues, tt.startTrigger, "start");
+            CollectTriggerIssues(issues, tt.endTrigger, "end");
+            for (uint i = 0; i < tt.checkpoints.Length; i++) {
+                CollectTriggerIssues(issues, tt.checkpoints[i], "checkpoint " + (i + 1));
+            }
         }
         void DrawEditor(ProjectTab@ pTab) override {
             UI::Text("Name: " + name);
             TimeTrialMinigameParams@ ttParams = cast<TimeTrialMinigameParams@>(params);
-            if (ttParams !is null) ttParams.DrawEditorUI();
+            if (ttParams !is null) {
+                if (IsDefaultPlacement(ttParams.startTrigger)) DrawIssueLine("Start is still at the default. Place it on the course.");
+                else if (!TriggerFullyInside(bounds, ttParams.startTrigger)) DrawIssueLine("Start is outside minigame bounds. Attempts will cancel immediately.");
+                if (IsDefaultPlacement(ttParams.endTrigger)) DrawIssueLine("End is still at the default. Place it on the course.");
+                else if (!TriggerFullyInside(bounds, ttParams.endTrigger)) DrawIssueLine("End is outside minigame bounds. The finish will be unreachable.");
+                ttParams.DrawEditorUI();
+            }
         }
         void DrawNvgBoxes() override {
             TimeTrialMinigameParams@ params = cast<TimeTrialMinigameParams@>(this.params);
             if (params !is null) {
-                params.startTrigger.DrawNvgBox();
-                params.endTrigger.DrawNvgBox();
+                params.startTrigger.DrawNvgBox(TriggerZoneColor(params.startTrigger));
+                params.endTrigger.DrawNvgBox(TriggerZoneColor(params.endTrigger));
                 for (uint i = 0; i < params.checkpoints.Length; i++) {
-                    params.checkpoints[i].DrawNvgBox();
+                    params.checkpoints[i].DrawNvgBox(TriggerZoneColor(params.checkpoints[i]));
                 }
             }
+        }
+        vec4 TriggerZoneColor(EditableTrigger@ t) const {
+            if (IsDefaultPlacement(t) || !TriggerFullyInside(bounds, t)) return cRed;
+            return cOrange;
         }
     }
 
@@ -581,6 +647,18 @@ namespace CM_Editor {
             this.OnDirty();
         }
 
+        void CollectIssues(MinigameIssue@[]@ issues) {
+            for (uint i = 0; i < minigames.Length; i++) {
+                minigames[i].CollectIssues(issues);
+            }
+        }
+
+        bool HasAnyIssues() {
+            MinigameIssue@[] issues;
+            CollectIssues(issues);
+            return issues.Length > 0;
+        }
+
         string UniqueSlug(const string &in prefix) {
             for (uint n = 1; n < 10000; n++) {
                 string candidate = prefix + "-" + n;
@@ -636,6 +714,10 @@ namespace CM_Editor {
                 auto p1 = UI::GetCursorPos();
                 UI::AlignTextToFramePadding();
                 UI::Text("Type: " + tostring(minigames[i].type) + "  slug: " + minigames[i].slug);
+                if (minigames[i].HasIssues()) {
+                    UI::SameLine();
+                    UI::Text("\\$f80" + Icons::ExclamationTriangle + " needs attention");
+                }
                 UI::SameLine();
                 if (UI::Button("Edit##" + i)) {
                     editingIx = int(i); // Enter editing mode

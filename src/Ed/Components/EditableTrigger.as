@@ -9,6 +9,7 @@ namespace CM_Editor {
         vec3 posBottomCenter;
         vec3 size;
         bool isEditing = false;
+        bool hasBeenSet = false;
         string label;
         string name;
         EditableTriggerCallback@ onEditDone;
@@ -28,6 +29,7 @@ namespace CM_Editor {
                 posBottomCenter = JsonToVec3(j.Get("pos", Json::Value()), defaultPos);
                 size = JsonToVec3(j.Get("size", Json::Value()), defaultSize);
                 name = j.Get("name", name_);
+                hasBeenSet = j.HasKey("pos");
             }
             label = label_;
         }
@@ -59,12 +61,15 @@ namespace CM_Editor {
             UI::PushID(label);
             if (isEditing) {
                 posBottomCenter = GetEditorItemCursorPos() - vec3(0, 0.5, 0);
+                hasBeenSet = true;
                 UI::BeginDisabled();
                 UI::InputFloat3("Position##pos", posBottomCenter, "%.3f", UI::InputTextFlags::ReadOnly);
                 UI::EndDisabled();
                 DrawInstructionText("Place Car at Trigger Location", true);
             } else {
+                vec3 prevPos = posBottomCenter;
                 posBottomCenter = UI::InputFloat3("Position##pos", posBottomCenter);
+                if ((posBottomCenter - prevPos).LengthSquared() > 1e-8) hasBeenSet = true;
             }
             UI::SameLine();
             if (UI::Button(Icons::PencilSquareO + " Set##" + label)) {
@@ -80,6 +85,7 @@ namespace CM_Editor {
             NotifyWarning("EditableTrigger OnMouseClick");
             if (isEditing) {
                 isEditing = false;
+                hasBeenSet = true;
                 startnew(RestoreEditorMode);
                 if (onEditDone !is null) onEditDone(this);
             }

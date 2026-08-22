@@ -164,7 +164,6 @@ namespace CM_Editor {
         }
 
         void DrawHasComponent(EProjectComponent ty, ProjectTab@ pTab) {
-            if (ty == EProjectComponent::Minigames) return;
             auto comp = pTab.GetComponentByType(ty);
             UI::Text(BoolIcon(comp is null ? false : comp.hasFile) + " " + ProjectComponentToString(ty));
         }
@@ -258,7 +257,7 @@ namespace CM_Editor {
         }
 
 
-        uint wTabIx_Prep, wTabIx_MapComment, wTabIx_Done, wTabIx_Adv1Conf, wTabIx_Adv2Url,
+        uint wTabIx_Prep, wTabIx_MapComment, wTabIx_Done, wTabIx_Adv1Conf, wTabIx_Minigames, wTabIx_Adv2Url,
             wTabIx_PreUpload, wTabIx_ConfirmUpload;
 
         protected void SetUpWizardTabs() {
@@ -268,6 +267,7 @@ namespace CM_Editor {
             // - otherwise -> go through all steps
             // Adv1: set min version -- must be at least 0.5.5 to support the new custom map aux spec. set name_id too
             wTabIx_Adv1Conf = finalizationWizard.AddTab("Advanced 1", CoroutineFunc(this.FinWiz_20_Advanced1), Icons::Cog);
+            wTabIx_Minigames = finalizationWizard.AddTab("Minigames", CoroutineFunc(this.FinWiz_25_MinigameChecks), Icons::Gamepad);
             // Adv2: check asset URLs -- since assets are downloaded, all the URLs should work. (The user can move on if they know what they're doing).
             wTabIx_Adv2Url = finalizationWizard.AddTab("URL Checks", CoroutineFunc(this.FinWiz_30_CheckUrls), Icons::Link);
             wTabIx_PreUpload = finalizationWizard.AddTab("Upload JSON", CoroutineFunc(this.FinWiz_40_PreUpload), Icons::Upload);
@@ -294,6 +294,16 @@ namespace CM_Editor {
 
             UX::BulletText("Simple: Only use the map comment (no JSON upload, just heights/labels). Best for basic towers.");
             UX::BulletText("Advanced: Upload a full JSON spec (supports voice lines, triggers, and other features).");
+
+            auto mgComp = pTabForWiz.GetMinigamesComponent();
+            if (mgComp !is null && mgComp.minigames.Length > 0) {
+                UI::PushStyleColor(UI::Col::Text, cOrange);
+                UI::TextWrapped(Icons::ExclamationTriangle + " This project has " + mgComp.minigames.Length + " minigame(s). Simple workflow (map comment only) will not upload them — use Advanced.");
+                if (mgComp.HasAnyIssues()) {
+                    UI::TextWrapped(Icons::ExclamationTriangle + " Some minigames have problems (bounds not set, or start/end outside bounds). Advanced workflow will block upload until they are fixed.");
+                }
+                UI::PopStyleColor();
+            }
 
             UI::SeparatorText("\\$i\\$afc  · • —– ٠ Choose Workflow ٠ –— • ·  ");
             // Choice buttons
@@ -432,6 +442,52 @@ namespace CM_Editor {
             }
 
             if (!mcvOk || !nameIdOk) {
+                finalizationWizard.SetNextNavButtonDisabled();
+            }
+        }
+
+        void FinWiz_25_MinigameChecks() {
+            _wiz_generatedDipsSpec = "";
+            @_wiz_generatedJsonObject = null;
+            _wiz_generatedJsonString = "";
+
+            UI::Text("Finalization: Minigame Checks");
+            UI::SeparatorText("");
+            UI::TextWrapped("Bounds must be placed, and start/end (and checkpoints) must sit inside them. Leaving bounds cancels an attempt.");
+
+            auto mgComp = pTabForWiz.GetMinigamesComponent();
+            if (mgComp is null || mgComp.minigames.Length == 0) {
+                UI::Text(BoolIcon(true) + " No minigames. Nothing to check.");
+                return;
+            }
+
+            MinigameIssue@[] issues;
+            mgComp.CollectIssues(issues);
+            UI::Text("Minigames: " + mgComp.minigames.Length);
+            UI::SeparatorText("");
+
+            for (uint i = 0; i < mgComp.minigames.Length; i++) {
+                auto mg = mgComp.minigames[i];
+                MinigameIssue@[] gameIssues;
+                mg.CollectIssues(gameIssues);
+                string label = mg.slug.Length > 0 ? mg.slug : mg.name;
+                if (gameIssues.Length == 0) {
+                    UI::Text(BoolIcon(true) + " " + label);
+                } else {
+                    UI::Text(BoolIcon(false) + " " + label);
+                    UI::Indent();
+                    for (uint j = 0; j < gameIssues.Length; j++) {
+                        UI::Text("\\$f80" + Icons::ExclamationTriangle + " " + gameIssues[j].message);
+                    }
+                    UI::Unindent();
+                }
+            }
+
+            UI::SeparatorText("");
+            if (issues.Length == 0) {
+                UI::Text(BoolIcon(true) + " All minigame checks passed.");
+            } else {
+                UI::Text(BoolIcon(false) + " Fix these in the Minigames component before uploading.");
                 finalizationWizard.SetNextNavButtonDisabled();
             }
         }
