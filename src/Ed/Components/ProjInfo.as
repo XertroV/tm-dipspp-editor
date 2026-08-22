@@ -169,9 +169,15 @@ namespace CM_Editor {
             UI::Text(BoolIcon(comp is null ? false : comp.hasFile) + " " + ProjectComponentToString(ty));
         }
 
+        bool JsonUrlSchemeOk(const string &in url) {
+            if (url.StartsWith("https://")) return true;
+            string base = DipsPPConnection::HttpBaseUrl();
+            return url.StartsWith(base + "/");
+        }
+
         void DrawValidationMsgsJsonUrl(const string &in url) {
             auto cross = BoolIcon(false);
-            if (!url.StartsWith("https://")) UI::Text(cross + " URL must start with 'https://'");
+            if (!JsonUrlSchemeOk(url)) UI::Text(cross + " URL must be https:// or the Dips++ HTTP base");
             if (!url.EndsWith(".json")) UI::Text(cross + " URL must end with '.json'");
             if (url.Length < 10) UI::Text(cross + " URL must be at least 10 characters");
         }
@@ -523,7 +529,7 @@ namespace CM_Editor {
                 _ResetUploadState();
                 return;
             }
-            string uploaded_url = "https://dips-plus-plus.xk.io/aux_spec/" + LocalUserWSID() + "/" + name_id + ".json";
+            string uploaded_url = DipsPPConnection::HttpBaseUrl() + "/aux_spec/" + LocalUserWSID() + "/" + name_id + ".json";
             px_url = uploaded_url; // set the URL in the project info
             NotifySuccess("JSON uploaded successfully! URL: " + uploaded_url);
             _ResetUploadState();
