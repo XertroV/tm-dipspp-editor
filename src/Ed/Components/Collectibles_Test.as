@@ -206,4 +206,94 @@ namespace Tests {
         h.CollectIssues(issues);
         Collectibles_AssertHasMessage(issues, "item idName is empty", "idName");
     }
+
+    Json::Value@ Collectibles_Vec3(const vec3 &in v) {
+        auto j = Json::Array();
+        j.Add(v.x);
+        j.Add(v.y);
+        j.Add(v.z);
+        return j;
+    }
+
+    [Test]
+    void Hats_LoadJsonRoundtrip(Tests::Context@ ctx) {
+        auto @comp = Hats_EmptyComp();
+        auto root = Json::Object();
+        auto arr = Json::Array();
+        auto one = Json::Object();
+        one["slug"] = "Hat-1";
+        one["name"] = "crown";
+        auto item = Json::Object();
+        item["idName"] = "Crown.Item.Gbx";
+        one["item"] = item;
+        one["image"] = "hats/crown.png";
+        one["audio"] = "hats/unlock.mp3";
+        auto unlock = Json::Object();
+        unlock["finishThisMap"] = true;
+        auto uids = Json::Array();
+        uids.Add("DeepDipUid1111111111111111");
+        uids.Add("DeepDipUid2222222222222222");
+        unlock["recordUids"] = uids;
+        one["unlock"] = unlock;
+        arr.Add(one);
+        root["hats"] = arr;
+        comp.LoadItemsFromJson(root);
+        if (comp.hats.Length != 1) throw("want 1 hat, got " + comp.hats.Length);
+        auto @h = comp.hats[0];
+        if (h.slug != "Hat-1") throw("slug");
+        if (h.itemIdName != "Crown.Item.Gbx") throw("itemIdName");
+        if (!h.unlock.finishThisMap) throw("finishThisMap");
+        if (h.unlock.recordUids.Length != 2) throw("recordUids");
+        if (h.unlock.recordUids[0] != "DeepDipUid1111111111111111") throw("uid0");
+        if (h.image != "hats/crown.png") throw("image");
+        if (h.audio != "hats/unlock.mp3") throw("audio");
+        auto written = comp.ToJson();
+        if (!written.HasKey("hats")) throw("write hats");
+        if (string(written["hats"][0]["item"]["idName"]) != "Crown.Item.Gbx") throw("write idName");
+        if (!bool(written["hats"][0]["unlock"]["finishThisMap"])) throw("write finishThisMap");
+        if (written["hats"][0]["unlock"]["recordUids"].Length != 2) throw("write recordUids");
+    }
+
+    [Test]
+    void Collectibles_LoadNewKeyWithItemLocAndGatedBy(Tests::Context@ ctx) {
+        auto @comp = Collectibles_EmptyComp();
+        auto root = Json::Object();
+        auto arr = Json::Array();
+        auto one = Json::Object();
+        one["slug"] = "Collectible-1";
+        one["name"] = "shard";
+        one["collectOnUnlock"] = false;
+        auto zone = Json::Object();
+        zone["pos"] = Collectibles_Vec3(vec3(10, 20, 30));
+        zone["size"] = Collectibles_Vec3(vec3(8, 8, 8));
+        one["zone"] = zone;
+        auto item = Json::Object();
+        item["idName"] = "DipsCollectable.Item.Gbx";
+        auto loc = Json::Object();
+        loc["pos"] = Collectibles_Vec3(vec3(10, 20, 30));
+        loc["pyr"] = Collectibles_Vec3(vec3(0, 1.57, 0));
+        item["loc"] = loc;
+        one["item"] = item;
+        one["gatedBy"] = "Collectible-0";
+        one["unlockScore"] = 12345;
+        arr.Add(one);
+        root["collectibles"] = arr;
+        comp.LoadItemsFromJson(root);
+        if (comp.collectibles.Length != 1) throw("want 1, got " + comp.collectibles.Length);
+        auto @c = comp.collectibles[0];
+        if (c.slug != "Collectible-1") throw("slug");
+        if (!c.useZone) throw("useZone");
+        if (c.zone.posBottomCenter.x != 10 || c.zone.posBottomCenter.y != 20 || c.zone.posBottomCenter.z != 30) throw("zone pos");
+        if (c.item.idName != "DipsCollectable.Item.Gbx") throw("item idName");
+        if (c.item.pos.x != 10 || c.item.pyr.y < 1.5 || c.item.pyr.y > 1.6) throw("item loc");
+        if (!c.item.bound) throw("item bound");
+        if (c.gatedBy != "Collectible-0") throw("gatedBy");
+        if (!c.hasUnlockScore || c.unlockScore != 12345) throw("unlockScore");
+        auto written = comp.ToJson();
+        if (!written.HasKey("collectibles")) throw("write collectibles");
+        if (written.HasKey("collectables")) throw("must not write collectables");
+        if (!written["collectibles"][0].HasKey("item")) throw("write item");
+        if (!written["collectibles"][0]["item"].HasKey("loc")) throw("write loc");
+        if (string(written["collectibles"][0]["gatedBy"]) != "Collectible-0") throw("write gatedBy");
+    }
 }
