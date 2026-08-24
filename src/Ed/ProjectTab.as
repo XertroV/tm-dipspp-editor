@@ -264,7 +264,10 @@ namespace CM_Editor {
             auto root = Json::Object();
             // Info
             auto info = GetInfoComponent();
-            if (info !is null) root["info"] = info.ro_data;
+            if (info !is null) {
+                root["info"] = info.ro_data;
+                WriteListingThreshold(root, info.ListingThreshold);
+            }
             // Floors
             auto floors = GetFloorsComponent();
             if (floors !is null) root["floors"] = floors.ToJson();

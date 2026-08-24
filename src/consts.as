@@ -15,3 +15,7 @@ const vec3 BACKWARD = vec3(0, 0, 1);
 float g_scale = UI::GetScale();
 
 const string MIN_PLUGIN_VERSION_AUX_SPEC = "0.5.10";
+
+const int LISTING_THRESHOLD_DEFAULT = 25;
+const int LISTING_THRESHOLD_MIN = 5;
+const int LISTING_THRESHOLD_MAX = 100;

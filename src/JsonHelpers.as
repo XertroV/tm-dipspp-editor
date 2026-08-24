@@ -14,6 +14,24 @@ Json::Value@ Vec3ToJson(const vec3 &in v) {
     return j;
 }
 
+bool ListingThresholdIsValid(int v) {
+    return v >= LISTING_THRESHOLD_MIN && v <= LISTING_THRESHOLD_MAX;
+}
+
+int ListingThresholdFromJson(const Json::Value@ j) {
+    int v = LISTING_THRESHOLD_DEFAULT;
+    if (j is null) return v;
+    JsonX::SafeGetInt(j, "listingThreshold", v);
+    return v;
+}
+
+void WriteListingThreshold(Json::Value@ j, int v) {
+    if (j is null) return;
+    if (v == LISTING_THRESHOLD_DEFAULT) return;
+    if (!ListingThresholdIsValid(v)) return;
+    j["listingThreshold"] = v;
+}
+
 vec3 JsonToVec3(const Json::Value@ j, const vec3 &in defaultValue = vec3(0, 0, 0)) {
     if (j.GetType() != Json::Type::Array) {
 #if DEV

@@ -28,6 +28,8 @@ namespace CM_Editor {
         void set_UrlPrefix(const string &in v) { rw_data["urlPrefix"] = v; }
         string get_NameId() const { return ro_data.Get("nameId", ""); }
         void set_NameId(const string &in v) { rw_data["nameId"] = v; }
+        int get_ListingThreshold() const { return ListingThresholdFromJson(ro_data); }
+        void set_ListingThreshold(int v) { rw_data["listingThreshold"] = v; }
 
         void CreateDefaultJsonObject() override {
             auto j = Json::Object();
@@ -439,7 +441,26 @@ namespace CM_Editor {
                 UI::Text(BoolIcon(true) + " Name ID looks good! Filename will be: " + newNameId + ".json");
             }
 
-            if (!mcvOk || !nameIdOk) {
+            UI::Dummy(vec2(0, 4));
+
+            // Listing Threshold
+            int listingThreshold = ListingThreshold;
+            int newLT = UI::InputInt("Listing Threshold (default 25)", listingThreshold);
+            AddSimpleTooltip("Maps become listed on the listed-maps route after this many unique public leaderboard players. Default 25. Once listed they stay listed.");
+            if (newLT != listingThreshold) ListingThreshold = newLT;
+            bool ltOk = ListingThresholdIsValid(newLT);
+            UI::AlignTextToFramePadding();
+            if (!ltOk) {
+                if (newLT < LISTING_THRESHOLD_MIN) {
+                    UI::Text(BoolIcon(false) + " Listing threshold must be at least " + LISTING_THRESHOLD_MIN);
+                } else {
+                    UI::Text(BoolIcon(false) + " Listing threshold must be at most " + LISTING_THRESHOLD_MAX);
+                }
+            } else {
+                UI::Text(BoolIcon(true) + " Listing threshold looks good!");
+            }
+
+            if (!mcvOk || !nameIdOk || !ltOk) {
                 finalizationWizard.SetNextNavButtonDisabled();
             }
         }
